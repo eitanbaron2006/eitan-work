@@ -32,6 +32,7 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import { ActiveTab, Project, ChatMessage } from "./types";
 import { PORTFOLIO_PROJECTS, PROFILE_STATS, CORE_SKILLS } from "./data";
+import { ResumeViewer } from "./components/ResumeViewer";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("home");
@@ -314,26 +315,26 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF9F6] text-[#1A1A1A] font-sans flex flex-col selection:bg-black/15 selection:text-black" dir="rtl">
+    <div className="min-h-screen bg-[#F4F1EA] text-[#1A1A1A] font-sans flex flex-col selection:bg-black/15 selection:text-black" dir="rtl">
       
       {/* Upper Elegant Header Bar */}
-      <header className="sticky top-0 z-45 bg-[#FAF9F6]/95 backdrop-blur-md border-b border-black/10 transition-all duration-200">
+      <header className="sticky top-0 z-45 bg-[#F4F1EA]/95 backdrop-blur-md border-b border-black/10 transition-all duration-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-baseline h-24 pt-6 pb-4">
+          <div className="flex justify-between items-center h-24">
             
             {/* Branding / Human Name */}
-            <div className="flex items-baseline gap-4">
+            <div className="flex items-center gap-4">
               <div 
-                className="w-12 h-12 rounded-none bg-[#1A1A1A] flex items-center justify-center text-[#FAF9F6] font-serif font-black italic text-xl cursor-pointer hover:bg-[#E03C31] transition-colors duration-200" 
+                className="w-12 h-12 rounded-none bg-[#1A1A1A] flex items-center justify-center text-[#FAF9F6] font-sans font-black text-xl cursor-pointer hover:bg-[#e07631] transition-colors duration-200" 
                 onClick={() => setActiveTab("home")}
               >
                 אב
               </div>
               <div onClick={() => setActiveTab("home")} className="cursor-pointer flex flex-col">
                 <div className="flex items-baseline gap-2">
-                  <h1 className="text-3xl font-serif font-black tracking-tighter leading-none uppercase text-[#1A1A1A]">איתן ברון</h1>
+                  <h1 className="text-3xl font-sans font-black tracking-tighter leading-none uppercase text-[#1A1A1A]">איתן ברון</h1>
                   {isAdmin && (
-                    <span className="bg-red-100 text-[#E03C31] px-2 py-0.5 rounded text-[9px] font-black tracking-wider animate-pulse flex items-center gap-1">
+                    <span className="bg-[#e07631]/10 text-[#e07631] px-2 py-0.5 rounded text-[9px] font-black tracking-wider animate-pulse flex items-center gap-1">
                       <Lock className="w-2.5 h-2.5" />
                       מנהל
                     </span>
@@ -365,7 +366,7 @@ export default function App() {
               </button>
               <button 
                 onClick={() => setActiveTab("chat")}
-                className={`text-sm font-sans font-bold pb-1 border-b-2 transition-all duration-150 flex items-center gap-1.5 ${activeTab === "chat" ? "border-[#E03C31] text-[#E03C31]" : "border-transparent text-[#E03C31]/75 hover:text-[#E03C31]"}`}
+                className={`text-sm font-sans font-bold pb-1 border-b-2 transition-all duration-150 flex items-center gap-1.5 ${activeTab === "chat" ? "border-[#e07631] text-[#e07631]" : "border-transparent text-[#e07631]/75 hover:text-[#e07631]"}`}
               >
                 <Sparkles className="w-4 h-4" />
                 צ'אט AI
@@ -373,7 +374,7 @@ export default function App() {
               {isAdmin && (
                 <button
                   onClick={handleAdminLogout}
-                  className="mr-2 p-1 px-2 border border-black/10 hover:border-black text-xs font-sans text-[#E03C31] font-bold flex items-center gap-1 transition-colors"
+                  className="mr-2 p-1 px-2 border border-black/10 hover:border-black text-xs font-sans text-[#e07631] font-bold flex items-center gap-1 transition-colors"
                   title="התנתק ממצב המנהל"
                 >
                   <LogOut className="w-3.5 h-3.5" />
@@ -403,38 +404,38 @@ export default function App() {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
-              className="md:hidden bg-[#FAF9F6] border-b border-black/10 overflow-hidden"
+              className="md:hidden bg-[#F4F1EA] border-b border-black/10 overflow-hidden"
             >
               <div className="px-4 pt-2 pb-6 space-y-2">
                 <button 
                   onClick={() => { setActiveTab("home"); setMobileMenuOpen(false); }}
-                  className={`w-full text-right px-4 py-3 text-sm font-sans font-bold block ${activeTab === "home" ? "bg-black/5 text-[#E03C31]" : "text-[#1A1A1A]/80"}`}
+                  className={`w-full text-right px-4 py-3 text-sm font-sans font-bold block ${activeTab === "home" ? "bg-black/5 text-[#e07631]" : "text-[#1A1A1A]/80"}`}
                 >
                   פרופיל &amp; אודות
                 </button>
                 <button 
                   onClick={() => { setActiveTab("portfolio"); setMobileMenuOpen(false); }}
-                  className={`w-full text-right px-4 py-3 text-sm font-sans font-bold block ${activeTab === "portfolio" ? "bg-black/5 text-[#E03C31]" : "text-[#1A1A1A]/80"}`}
+                  className={`w-full text-right px-4 py-3 text-sm font-sans font-bold block ${activeTab === "portfolio" ? "bg-black/5 text-[#e07631]" : "text-[#1A1A1A]/80"}`}
                 >
                   תיק פרויקטים
                 </button>
                 <button 
                   onClick={() => { setActiveTab("resume"); setMobileMenuOpen(false); }}
-                  className={`w-full text-right px-4 py-3 text-sm font-sans font-bold block ${activeTab === "resume" ? "bg-black/5 text-[#E03C31]" : "text-[#1A1A1A]/80"}`}
+                  className={`w-full text-right px-4 py-3 text-sm font-sans font-bold block ${activeTab === "resume" ? "bg-black/5 text-[#e07631]" : "text-[#1A1A1A]/80"}`}
                 >
                   קורות חיים מלאים
                 </button>
                 <button 
                   onClick={() => { setActiveTab("chat"); setMobileMenuOpen(false); }}
-                  className={`w-full text-right px-4 py-3 text-sm font-sans font-bold flex items-center gap-2 ${activeTab === "chat" ? "bg-[#E03C31]/10 text-[#E03C31]" : "text-[#E03C31]"}`}
+                  className={`w-full text-right px-4 py-3 text-sm font-sans font-bold flex items-center gap-2 ${activeTab === "chat" ? "bg-[#e07631]/10 text-[#e07631]" : "text-[#e07631]"}`}
                 >
-                  <Sparkles className="w-4 h-4 text-[#E03C31]" />
+                  <Sparkles className="w-4 h-4 text-[#e07631]" />
                   צ'אט AI לראיונות
                 </button>
                 {isAdmin && (
                   <button 
                     onClick={() => { handleAdminLogout(); setMobileMenuOpen(false); }}
-                    className="w-full text-right px-4 py-3 text-sm font-sans font-bold text-[#E03C31] flex items-center gap-2"
+                    className="w-full text-right px-4 py-3 text-sm font-sans font-bold text-[#e07631] flex items-center gap-2"
                   >
                     <LogOut className="w-4 h-4" />
                     התנתק ממצב מנהל
@@ -462,22 +463,22 @@ export default function App() {
             >
               
               {/* Premium Hero Section */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center bg-white p-8 sm:p-12 border border-black/10 relative">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center p-8 sm:p-12 relative">
                 {/* Visual grid pattern / no background blurs for a clean editorial look */}
 
                 {/* Left Text Block */}
                 <div className="lg:col-span-8 space-y-6">
                   <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#EFEEED] text-xs font-sans font-bold text-[#1A1A1A] border border-black/10">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-[#E03C31]" />
+                    <CheckCircle2 className="w-3.5 h-3.5 text-[#e07631]" />
                     זמין להשתלבות מהירה בבנק דיסקונט / משרות פיתוח בכירות
                   </div>
                   
                   <h2 className="text-3xl sm:text-4xl lg:text-5xl font-sans font-black mb-4 leading-tight text-[#1A1A1A]">
-                    מפתח תוכנה וקוד עם <span className="text-[#E03C31] underline decoration-2 decoration-solid underline-offset-8">18 שנות מומחיות</span>
+                    מפתח תוכנה וקוד עם <span className="text-[#e07631] underline decoration-2 decoration-solid underline-offset-8">18 שנות מומחיות</span>
                   </h2>
                   
                   <p className="text-base sm:text-lg text-[#1A1A1A] leading-relaxed max-w-3xl font-sans">
-                    שלום, אני <strong className="text-[#1A1A1A] font-extrabold">איתן ברון</strong>. 11 שנים מהקריירה שלי הוקדשו לפיתוח, כתיבה ואופטימיזציה של מערכות הליבה בבנק דיסקונט. כמי שמכיר היטב את תשתיות הבנק, הדאטאבייסים, אבטחת המידע והתרבות הארגונית שלו – אני יציב, יעיל ומביא איתי ערך קריטי של <span className="text-black font-extrabold underline decoration-[#E03C31] decoration-2">תרומה מיידית ללא תקופת חפיפה מורכבת</span>.
+                    שלום, אני <strong className="text-[#1A1A1A] font-extrabold">איתן ברון</strong>. 11 שנים מהקריירה שלי הוקדשו לפיתוח, כתיבה ואופטימיזציה של מערכות הליבה בבנק דיסקונט. כמי שמכיר היטב את תשתיות הבנק, הדאטאבייסים, אבטחת המידע והתרבות הארגונית שלו – אני יציב, יעיל ומביא איתי ערך קריטי של <span className="text-black font-extrabold underline decoration-[#e07631] decoration-2">תרומה מיידית ללא תקופת חפיפה מורכבת</span>.
                   </p>
 
                   <p className="text-xs sm:text-sm text-[#1A1A1A]/90 font-sans tracking-wide max-w-3xl leading-relaxed border-t border-black/10 pt-4">
@@ -488,9 +489,9 @@ export default function App() {
                   <div className="flex flex-wrap gap-4 pt-4">
                     <button 
                       onClick={() => setActiveTab("chat")}
-                      className="px-8 py-3.5 bg-black hover:bg-[#E03C31] text-white text-xs font-sans font-extrabold cursor-pointer transition-colors duration-150 flex items-center gap-2"
+                      className="px-8 py-3.5 bg-black hover:bg-[#e07631] text-white text-xs font-sans font-extrabold cursor-pointer transition-colors duration-150 flex items-center gap-2"
                     >
-                      <Sparkles className="w-4 h-4 text-[#E03C31]" />
+                      <Sparkles className="w-4 h-4 text-[#e07631]" />
                       שאל את עוזר ה-AI
                     </button>
                     <button 
@@ -512,10 +513,10 @@ export default function App() {
 
                 {/* Right Visual Image */}
                 <div className="lg:col-span-4 flex flex-col justify-center items-center">
-                  <div className="relative p-2 bg-white border border-black/10 shadow-2xl">
+                  <div className="relative p-2 bg-[#FAF9F6] border border-black/10 shadow-2xl">
                     <div className="w-48 h-56 bg-neutral-200 overflow-hidden relative">
                       <img 
-                        src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAMCAgICAgMCAgIDAwMDBAYEBAQEBAgGBgUGCQgKCgkICQkKDA8MCgsOCwkJDRENDg8QEBEQCgwSExIQEw8QEBD/2wBDAQMDAwQDBAgEBAgQCwkLEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBD/wAARCAEUAQADASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD4JtdD0dXy1lG4APBJ5rbtE0+2ESxWcSKhzgKM1ko2SACc1LGTvXknn1rklO+h6HsUjrrTV44J3MCiIOwiwoAJGMtn65A+mar3niK7nZiszLuORjsKwredjORycM7Hv/npUTTliRjpUOw40rs1P7RlUMRKSW6nHWmf2jMAVJ4PNZYaVuQeKlVW2AkkmpNlRSLb3LMSxfmmGRmbJPAqoWOee9J5jscAkGgfs1tY0Irgododj6ZqUylyDvxis+J/mBbp34q20Ib7oOc+vWgTpod5+CVLCpAGP8WKhZdi5kQEU+ORGIHINNWE6ZKjkNz0PHFXmmCRcNk9KgRUBw2QAMjHc0xlZ2J6Y64p3tsZuFkQT3DhtrlmHXrVrSb1oLpJEbAyM/SqU6Buckg+tNtQUO0kYHNb0p2d0YVYKSsfUHwr8R2MMEUzLOxQDc0S7mQj+LHevePCnxNtNQ8QxeE7/EWoTQebCVOYrhByJIz6EA5HYgg18hfCXW7my1OKRovMhXJOOoxXtvjzyZbDTPHHh6CG11fQpUu7NoXwHOQWjZT/AAyAEH3wa+ppt4vByifMVH9XxS7H0tDOMjmtS3lyAK5Lw/run+I9EsPEOlOWtb+FZo88FcjlGHYg8H3Fbtpc89a8ClGzsz1ZyTOhhOR1qy0y20Ek7dI0LH8KzbWTOOavzR/aLWWH++hX9K7oLUxPhr9s/wDeq+K/hnZnUdIiSzv9QP9nXMEm5k8tjjf6bgGrm/2cZzN8PLSL/nm5X+dXtc+F/i7XrzWvhvrUCLoHhq6utRSTed2HZ3jAz2wxP4Vk/s1FT4LlRGJWO8lVT7BjiuDOI2pK/cMHJyqM9mtRyc1oIMjmqEHynjvWhHkr3FfOK9z1GySMASP9QUsZfNfUvNbExHHKxOe2DXKznMrfWunvC32Zgo/hrmZFGSe+a5626No7FSZe9YurWazoQfSt91GCD3rPuoxyD6VginqfFceSeRViHmVF6fN1quNwPFWYFy6/X0zXtNnoJXRHFu82XAztBpSDn5RgGpIEO52dCAc4J6Hj1pNpAyRQ9QS0FVcDOfzqRSSOvQ81CCWbbyVxUyDjGDQjRbA2GHP6CoxGqknOc9KlK5HLYoCFjtB6+1PQFYWFPm6ZC881djkViFB5qGGIIjbz165pylVG6JMkcE4qGS0Ne4LMNp6Z4pI2kIErEA+3WnxhZXJCZ9R6VMItx+VeV7ntTuJoWCZ5HwyjA5x/WrRUJnaSCRz6YrOur2DTdzzuiggk5bGBXPyeL5Ltnh06HzDxgn36VpGlKpsjnqVoU9GdHdzwQozO4UA8/wD6qrjUtNSFp/O4XseM+9c4kctwHnu7sokLDzpT91eecD17D1NUdT1lLm4Y2UCrbg/uy3JKjgE/WuqGF7s4KmJbWiO/0Px5f6Q6zaY4hV3KKzd+Oc+1XNW+Lfj2+lhtH8R3EVnGhVVhGAQe34/njFeWyNdyWy3EzkQ5O3JOAf8APar9lqhvHjiMi7vvLjrwK7IJwTUXocclzu80es+Gvjr8R/Btm+m6P4rvYbVWLtCsmcN6kMCK73Q/2w/iXpYUz39teYYAC5hVt3YcqFIr5iu9bNiXUoXJPzN9abNq7iwhKxqtxJlzgAKBngmlCCvdiqX6H3N4F/b3uXvorHxr4MgXeVBlsZWU47na2R+Ga+nfBnx7+FXja2hm0fxVbpNIuWt5zsdD/dJ+6T9DX5JaQLjUbuG4hnP2l0IGBgAY/wD11NJqOq6dJHaaU7q6uGlEchQgj0/HmumC5dTmbu+VH6B/GKKTULq5+JM9zcW3hGaKWwvVtnKyTryqynH8IOR+NeEfs1zWo8N6lb2Mhe3h1GdYmPUpuO0n8MVxmhftQeKtE0G98B+KpbfUtOvbYwtbXEuTDuz86tngj06V037M1o9hpGrWjXcM6y3X2mFoz96Yl647YORXFmj9pR06F4SLhU16nu0DgMOa1IWG3BNYkOdw5rXg6Ac18/FXR6T2LkfJHFSNwwxTI8gAipSoJBNMaXYJji2kOMnaa5kqOTnrXUzwSPZTGIZ2rk1y/Wuetq0ax2K8qgdPpVC5QnntitN1zk1mX0yRKSxHFZRGfFkac5qdE5HbntT44TnkVIsLM2FwMdTXsHp3VrIjhTMkwb2xxjnnv0ppTA5B/Op4g5vJFMeQV4wuf4j+fXpTvKbqcY+tCZMWVAoB4zU0aZOcY+oqeOPjA2+5A5qTy4j1UcDvSbLbK7Rk/MDgc/WlSEgqV+6fUVOIu6kfSpggAwckik5WEiFYc5LMGxztFSbAQQTjv05qWOEAZJOTwPerZgUQrvUhiOuKjnGlcowxhWGfpz/WsfxHrsemW7QxTDz2BKhefwqXtTqY0ewk2yDzpANgB5xXnW67vpzczSZYgsvzc+9dmFoKr78tjgxeJ9l7kdzWu5nu7cPfSZeQg+Xu+6ufU8Vsva22jWLLnbNJEGCqcbcgdfTHvnnoKx3097KNVcG4ndAwQDOD7/4VYkjnXSLebU3O6SduTyzEAHb+o/KvRcltE8tJvV7jNQura5hh0+FD5KReYUVuN3qT3J//AFYrOS3MhWOK3Zc8L15x3yegrb1BtOto2yv7z5ckAYxwMD8/50yPUQk0c1raxqkMW1VIyeB/Uk/Ws3MpRvsZ2tpcW9mLEIQ23JHTGee/r6VmWH2uDULdIiFkXbgnooPXP0zXQ6jf3E1kl3coB57tuJBL46c/maqXImmAnS1C5XcGxggY5z+fH0qYVUkOUGtytc2c2qX3kxXGbcyks5HBx1P5f0FQNFJd ASSBljUkhM9BnA/nVe31WSTZaI22NVUDA9yT+pH5VavmchrdQcLtUEdCe/8AX8hWin0JtcUapcW0qRWkzRRgjH4ev5VpaLqTPczT3GZCVJZzjK57+3p1rFaPaoTG7yEO7B5LHk/gORUcM80UDru2GZsMcc7QDx/P86v2nu2RnyK9zoL7TdFvyJdJ3K23EiyEkE9SQck12+h+LPEHhLR9Lu9K1AhlcgnOEiQLgKFBHHU5PU15hZXhtHDO3IBIU+p65961bLXFiljjuY3ljJzsDYwT/WqjUurSMp077H178JPjLo3jd49H1Em11J8CBmGI7rA5wezexr2i3QbRzXwXZeLNNheyEOnzW9wXVj5cgOxlIwcjkHPfFfY/w48dxeK/D0TXQ8vU7VAl1GeC3ZZMeh/nmvJxmFVGXPDY6MPW51yT3O5UfKMU/AHOaq285bBP5VcUbq4WdKEuZJYtOuGjONyYP0rl+1dJqkhisZFB64zXMs4GTXJV3NVsRyk4PNcn4kn8iEs0h6+tdJc3AAOPSvP/ABddtJcJAW4zk0qKXMTUdkfPKWspPGRjipjaSk5Q/N7nitW3tthLbc5qz9j8xTmMevSvQcz1EupzaRONUTDsruJMDOCMbScH161bS08yMO6luO9Oktkh1GAYUKLvy+eP9ZG3T36Vq2k ACAVAp25UhOgwcYpOTsNIyBaNnAQAYxVgWC9Bwe2K0VtGZzgY71aitWyF56849KhMuMbsxxahRs6g8dKnWzjTnKn8K2FsNxGUJHbmpG0xm4xnPqOlK5apmYlnEwBZBk9Minz2qhcTMViXlscEVsxaex5cgHPA6Zrn/iPd2+j+F52iLrLORBGd3AJHOe/QGhLmdkNpQjdni/iK+uNe12aSElokJEaiaka7u4HDAL7D1P41bS08yMO6luO9Oktkh1GAYUKLvy+eP9ZG3T36Vq2k ACAVAp25UhOgwcYpOTsNIyBaNnAQAYxVgWC9Bwe2K0VtGZzgY71aitWyF56849KhMuMbsxxahRs6g8dKnWzjTnKn8K2FsNxGUJHbmpG0xm4xnPqOlK5apmYlnEwBZBk9Minz2qhcTMViXlscEVsxaex5cgHPA6Zrn/iPd2+j+F52iLrLORBGd3AJHOe/QGhLmdkNpQjdni/iK+uNe12aSElokJEaiaka7u4HDAL7D1P41bS08yMO6luO9Oktkh1GAYUKLvy+eP9ZG3T36Vq2k ACAVAp25UhOgwcYpOTsNIyBaNnAQAYxVgWC9Bwe2K0VtGZzgY71aitWyF56849KhMuMbsxxahRs6g8dKnWzjTnKn8K2FsNxGUJHbmpG0xm4xnPqOlK5apmYlnEwBZBk9Minz2qhcTMViXlscEVsxaex5cgHPA6Zrn/iPd2+j+F52iLrLORBGd3AJHOe/QGhLmdkNpQjdni/iK+uNe12aSElokJEaiaka7u4HDAL7D1P41bS08yMO6luO9Oktkh1GAYUKLvy+eP9ZG3T36Vq2k ACAVAp25UhOgwcYpOTsNIyBaNnAQAYxVgWC9Bwe2K0VtGZzgY71aitWyF56849KhMuMbsxxahRs6g8dKnWzjTnKn8K2FsNxGUJHbmpG0xm4xnPqOlK5apmYlnEwBZBk9Minz2qhcTMViXlscEVsxaex5cgHPA6Zrn/iPd2+j+F52iLrLORBGd3AJHOe/QGhLmdkNpQjdni/iK+uNe12aSElokJEaiaka7u4HDAL7D1P41bS08yMO6luO9Oktkh1GAYUKLvy+eP9ZG3T36Vq2k ACAVAp25UhOgwcYpOTsNIyBaNnAQAYxVgWC9Bwe2K0VtGZzgY71aitWyF56849KhMuMbsxxahRs6g8dKnWzjTnKn8K2FsNxGUJHbmpG0xm4xnPqOlK5apmYlnEwBZBk9Minz2qhcTMViXlscEVsxaex5cgHPA6Zrn/iPd2+j+F52iLrLORBGd3AJHOe/QGhLmdkNpQjdni/iK+uNe12aSElokJEaiaka7u4HDAL7D1P41bS08yMO6luO9Oktkh1GAYUKLvy+eP9ZG3T36Vq2k ACAVAp25UhOgwcYpOTsNIyBaNnAQAYxVgWC9Bwe2K0VtGZzgY71aitWyF56849KhMuMbsxxahRs6g8dKnWzjTnKn8K2FsNxGUJHbmpG0xm4xnPqOlK5apmYlnEwBZBk9Minz2qhcTMViXlscEVsxaex5cgHPA6Zrn/iPd2+j+F52iLrLORBGd3AJHOe/QGhLmdkNpQjdni/iK+uNe12aSElokJEaiaka7u4HDAL7D1P41bS08yMO6luO9Oktkh1GAYUKLvy+eP9ZG3T36Vq2k ACAVAp25UhOgwcYpOTsNIyBaNnAQAYxVgWC9Bwe2K0VtGZzgY71aitWyF56849KhMuMbsxxahRs6g8dKnWzjTnKn8K2FsNxGUJHbmpG0xm4xnPqOlK5apmYlnEwBZBk9Minz2qhcTMViXlscEVsxaex5cgHPA6Zrn/iPd2+j+F52iLrLORBGd3AJHOe/QGhLmdkNpQjdni/iK+uNe12aSElokJEaiaka7u4HDAL7D1P41bS08yMO6luO9Oktkh1GAYUKLvy+eP9ZG3T36Vq2k ACAVAp25UhOgwcYpOTsNIyBaNnAQAYxVgWC9Bwe2K0VtGZzgY71aitWyF56849KhMuMbsxxahRs6g8dKnWzjTnKn8K2FsNxGUJHbmpG0xm4xnPqOlK5apmYlnEwBZBk9Minz2qhcTMViXlscEVsxaex5cgHPA6Zrn/iPd2+j+F52iLrLORBGd3AJHOe/QGhLmdkNpQjdni/iK+uNe12aSElokJEa4O1QOhx2/xrY8A6H/AGtfzB7cYhOWZgcYx047E/zpvh3wxPJeoJ9MmneTlFVWBfPbkHOPQV7Z8Ovg9fJpmpaxr8YsoYG2uhOXWPILbyMdenGK9R1FTp8qPDhRlXrczPIb20urbXLhLMrtflGGQWjPYfTjiqs+k6hcQrEynZby+aU7/wCfQ/Uda99u/hr52zUobK3EFugMgJVJWX++AwH59eavaJ8LL69uo559M+02pBK+aMde4zzXNLGciO2OXuczfPP/AIi9/qkcaSW0iSRsVUlCA4B4Geh7fpXRaJ8N9fgvEuZdIlkgckZK8Lx1/n+VfXvhn4JW93G1ut4yRMFJUwCRQR/dLHIx7V2+j/BPTtMZY/MZwMuDyBu9QOnrXmV80lsketh8lVrtnxbrXgxrqGK3h0ttwUjYo6ju3+e1cze+D76yQyvakqISCcYx2/n+h5r9C5/h1axWMtvHo8BkYbVkLYyDxgnrXlHjj4A3cokayhUhiGEcR2gnHQOefwOP6VhRzNp2kbVsmTjeL1PgqPRhbaofNjbYMnA/HH9K6UaHDewvGiFJFOUPZwQDg+/P617RqnwSvJJ/tVvotxaJG7RTBpd7qwPPykD8uah034UXa3ey6SRY+RHcW+SrKRxkdRyfQ/pXq/X4SV7njLLJwfK0fO8cLWt/IpDMVJ4I6g9sUsumTT3u1IyVXLY9AT/n86+m9a/Z6eMtc23DOoYj7zNx09fx+lXNF/Z1kk3T3loUkDKWdQ2Dgfd47+tH9p00r3BZPVb2PmKTwfq0gjuPs7hCODg9P8/zrPuNJv7MtcXKOiA/uwe49fpX2rb/AAPV0WG4RiijARYzgn0Axz+tcF8V/gvqS6dLLDBJbQRJwvALLY7HHb2zRRzWMpqIq2TzhHmR86aBqKwXe6neKxgtWEh/2yP4Rn/OK9X8AfHOTS/EMmt6hHGtiieUyhcOVLDIB9cY/L8a8h1TT5rCR7KaFh5bbTkkDI9AKs2emeTZs5LEujHBX5QnAJz2PboK9pONeNmfP1aXs5X6n6QaRqdjqmn22qadOJrW7iWaGQfxKwyK2oGZsEdK8Q/Z+8R3rfCjRf7RiDvbGa34PIVXIX6/LivXtL160uVHltwPWvAnaE3E7knKKZLrkm222+pFcvLIWJGfwFdD4m3+RC0YLCU8BeTWXZeF/EF63+j2DgOfvScCuSrrLQ1S0Mm4IC5J7VxOq20F/dSs0yqyDC17InwvvJAH1O8CrjlEpfDngDQbWS5nazWQ5OHfnpUw913YSjc+TbSy3EKOSewGattpTBR8pwenHWt+00zy1Ut8pPJKjkflWwmhuyxmJFLHGDn9a6pSSZ6iVzyTxBaPb3jyMpBt3tbnc3AAWVQfoMZzXQR2eJbyEqS0UzLwm0DuBj+tWfGOhlLi4jlDA3mm3iLk/MzohcYH4A5rQsYfteoy3YeZ4r21tLtDIu2MCSMHC/wAnVSuXoKPQyLfTCfmmJ6elXI7JWbKIfStn7J32KTnJ4qe10pmk+dScjgA9BUOSRah2MmDTskiri6WQPb6ZrqLTw/sKyNEQSpOTzxWzB4cbyPPeL5D/ABAA/pzU89y3ocAunB8qFyfSvLvilBLrHimw8Kaczu0MPnyRxrnLt90dxwvrxzX0W/h1YAzXETIiZJkIxtwMn8K89+G/hqXxR4qvfFCIssVxKW3FeoHABB6KBjjqevTrvh9ZnNipWp2XUPhh8KmFn9rlEkFs7BU2v5jzOeMZX07nOO2ODX0zo//w/0/SfByaPY6cJnuQXZGAJfv8AMfc4GT/+qp4S8NR2tmhe2EQh+4zYIPqQo+mAOP61674dst8O+UfMdqjcOcAdK9CrTvEywclF3Z5fp/w6lCJpskiSi32SMAoRXb0PqBjP5V0p+HVtMohKCM8MRGNoOOxHfPGa7saakU0jgKCxwvBHH+SauxateSGwOuckdKsRxMcIFJbHQCvOqNNndSWhk3OlK0bKijue1QR6KrZDKHyOQf5Yroo7bMudhAA5I7fiamezRSHUqMrwSMc4rPlT1NttDyrW/A2j3V48rJcwSyYy8EhG7HqOQcViL8MNPtr/3פרופיל"
+                        src="/picture.png"
                         name="איתן ברון - מפתח בכיר"
                         className="w-full h-full object-cover rounded-none"
                       />
@@ -541,7 +542,7 @@ export default function App() {
                 </div>
                 <button 
                   onClick={() => setActiveTab("resume")}
-                  className="px-6 py-3.5 bg-[#E03C31] hover:bg-white hover:text-black text-white text-xs font-sans font-extrabold cursor-pointer transition-colors duration-150 flex items-center gap-1.5 whitespace-nowrap"
+                  className="px-6 py-3.5 bg-[#e07631] hover:bg-white hover:text-black text-white text-xs font-sans font-extrabold cursor-pointer transition-colors duration-150 flex items-center gap-1.5 whitespace-nowrap"
                 >
                   הצג את קורות החיים 
                   <ArrowUpRight className="w-4 h-4 ml-1" />
@@ -558,8 +559,8 @@ export default function App() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   
                   {/* Advantage 1 */}
-                  <div className="bg-white p-6 border border-black/10 space-y-4 relative">
-                    <div className="w-12 h-12 bg-[#EFEEED] border border-black/5 flex items-center justify-center text-[#E03C31]">
+                  <div className="bg-[#FAF9F6] p-6 border border-black/10 space-y-4 relative">
+                    <div className="w-12 h-12 bg-[#EFEEED] border border-black/5 flex items-center justify-center text-[#e07631]">
                       <CheckCircle2 className="w-6 h-6 animate-pulse" />
                     </div>
                     <h4 className="text-lg font-sans font-bold text-[#1A1A1A]">שליפה מיידית לדיסקונט</h4>
@@ -569,7 +570,7 @@ export default function App() {
                   </div>
 
                   {/* Advantage 2 */}
-                  <div className="bg-white p-6 border border-black/10 space-y-4 relative">
+                  <div className="bg-[#FAF9F6] p-6 border border-black/10 space-y-4 relative">
                     <div className="w-12 h-12 bg-[#EFEEED] border border-black/5 flex items-center justify-center text-[#1A1A1A]">
                       <Cpu className="w-6 h-6" />
                     </div>
@@ -580,7 +581,7 @@ export default function App() {
                   </div>
 
                   {/* Advantage 3 */}
-                  <div className="bg-white p-6 border border-black/10 space-y-4 relative">
+                  <div className="bg-[#FAF9F6] p-6 border border-black/10 space-y-4 relative">
                     <div className="w-12 h-12 bg-[#EFEEED] border border-black/5 flex items-center justify-center text-[#1A1A1A]">
                       <UserCheck className="w-6 h-6" />
                     </div>
@@ -597,26 +598,26 @@ export default function App() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
                 
                 {/* Stats Widget */}
-                <div className="bg-white p-8 border border-black/10 space-y-6">
+                <div className="bg-[#FAF9F6] p-8 border border-black/10 space-y-6">
                   <h4 className="text-lg font-sans font-bold text-[#1A1A1A] border-b border-black/10 pb-3">איתן במספרים</h4>
                   <div className="grid grid-cols-2 gap-4">
                     {PROFILE_STATS.map((stat, idx) => (
                       <div key={idx} className="bg-[#EFEEED] p-4 text-center space-y-1 border border-black/5">
-                        <div className="text-4xl font-sans font-black text-[#E03C31]">{stat.value}</div>
+                        <div className="text-4xl font-sans font-black text-[#e07631]">{stat.value}</div>
                         <div className="text-xs font-sans font-extrabold uppercase tracking-wider text-[#1A1A1A]">{stat.label}</div>
                       </div>
                     ))}
                   </div>
 
-                  <div className="bg-[#EFEEED] p-4 text-xs text-[#1A1A1A] leading-relaxed border-l-4 border-[#E03C31] font-sans">
+                  <div className="bg-[#EFEEED] p-4 text-xs text-[#1A1A1A] leading-relaxed border-l-4 border-[#e07631] font-sans">
                     🎓 <strong>הערה אקדמית:</strong> איתן סיים את התואר כמהנדס תוכנה (B.Tech) במכללת סמי שמעון עם ציוני 90+ בכל השפות, ופרויקט גמר מצטיין בציון 94. ההנדסאי שלו הסתיים עם פרויקט גמר ב-VB6 בציון 100!
                   </div>
                 </div>
 
                 {/* Level Progress Bars */}
-                <div className="bg-white p-8 border border-black/10 space-y-4">
+                <div className="bg-[#FAF9F6] p-8 border border-black/10 space-y-4">
                   <h4 className="text-lg font-sans font-bold text-[#1A1A1A] border-b border-black/10 pb-3">שפות ומומחיות טכנולוגית</h4>
-                  <div className="space-y-4">
+                  <div className="space-y-4" dir="ltr">
                     {CORE_SKILLS.map((skill, idx) => (
                       <div key={idx} className="space-y-1">
                         <div className="flex justify-between text-xs font-sans font-bold uppercase tracking-wider text-[#1A1A1A]">
@@ -680,9 +681,9 @@ export default function App() {
                   {/* Admin specific action buttons */}
                   {isAdmin && (
                     <div className="flex items-center gap-2">
-                      <button
+                       <button
                         onClick={openAddModal}
-                        className="px-4 py-2 bg-[#E03C31] hover:bg-black text-white text-xs font-sans font-bold uppercase flex items-center gap-1.5 cursor-pointer"
+                        className="px-4 py-2 bg-[#e07631] hover:bg-black text-white text-xs font-sans font-bold uppercase flex items-center gap-1.5 cursor-pointer"
                       >
                         <Plus className="w-3.5 h-3.5" />
                         הוסף פרויקט
@@ -707,7 +708,7 @@ export default function App() {
                     key={project.id}
                     layoutId={`project-container-${project.id}`}
                     onClick={() => setSelectedProject(project)}
-                    className="bg-white border border-black/10 hover:border-black/30 transition-colors duration-150 flex flex-col justify-between overflow-hidden cursor-pointer relative group"
+                    className="bg-[#FAF9F6] border border-black/10 hover:border-black/30 transition-colors duration-150 flex flex-col justify-between overflow-hidden cursor-pointer relative group"
                   >
                     
                     {/* Admin Project Card Edit overlays */}
@@ -723,7 +724,7 @@ export default function App() {
                         </button>
                         <button
                           onClick={(e) => handleDeleteProject(project.id, e)}
-                          className="p-1 px-2.5 bg-[#E03C31] text-white border border-black/10 text-xs font-sans font-bold uppercase flex items-center gap-1 shadow-md hover:bg-black cursor-pointer"
+                          className="p-1 px-2.5 bg-[#e07631] text-white border border-black/10 text-xs font-sans font-bold uppercase flex items-center gap-1 shadow-md hover:bg-black cursor-pointer"
                           title="מחק פרויקט"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -780,7 +781,7 @@ export default function App() {
                     {/* Bottom arrow CTA */}
                     <div className="px-5 py-3 border-t border-black/10 bg-[#EFEEED]/30 flex justify-between items-center text-xs font-sans font-extrabold text-[#1A1A1A] hover:bg-[#EFEEED]/60 transition-colors">
                       <span>הצג פרטים ורשימת תכונות</span>
-                      <ChevronLeft className="w-4 h-4 text-[#E03C31]" />
+                      <ChevronLeft className="w-4 h-4 text-[#e07631]" />
                     </div>
 
                   </motion.div>
@@ -789,7 +790,7 @@ export default function App() {
 
               {/* Empty search fallback */}
               {filteredProjects.length === 0 && (
-                <div className="text-center py-16 bg-white border border-slate-100 rounded-3xl space-y-2">
+                <div className="text-center py-16 bg-[#FAF9F6] border border-black/10 rounded-none space-y-2">
                   <Briefcase className="w-12 h-12 text-slate-300 mx-auto" />
                   <p className="text-sm font-bold text-slate-500">אין פרויקטים תחת קטגוריה זו כרגע.</p>
                 </div>
@@ -815,7 +816,7 @@ export default function App() {
                       initial={{ scale: 0.95, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
                       exit={{ scale: 0.95, opacity: 0 }}
-                      className="bg-white max-w-2xl w-full max-h-[85vh] overflow-y-auto z-10 border border-black relative"
+                      className="bg-[#FAF9F6] max-w-2xl w-full max-h-[85vh] overflow-y-auto z-10 border border-black relative"
                     >
                       <button 
                         onClick={() => setSelectedProject(null)}
@@ -835,11 +836,11 @@ export default function App() {
                         
                         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-sans font-bold pt-2">
                           <span className="flex items-center gap-1">
-                            <Clock className="w-4 h-4 text-[#E03C31]" />
+                            <Clock className="w-4 h-4 text-[#e07631]" />
                             <strong>תקופה:</strong> <span className="font-mono">{selectedProject.period}</span>
                           </span>
                           <span className="flex items-center gap-1">
-                            <UserCheck className="w-4 h-4 text-[#E03C31]" />
+                            <UserCheck className="w-4 h-4 text-[#e07631]" />
                             <strong>תפקיד:</strong> <span>{selectedProject.role}</span>
                           </span>
                         </div>
@@ -862,7 +863,7 @@ export default function App() {
                             <ul className="space-y-2.5">
                               {selectedProject.features.map((feat, fIdx) => (
                                 <li key={fIdx} className="flex items-start gap-2.5 text-xs sm:text-sm text-[#1A1A1A] leading-relaxed font-sans font-semibold">
-                                  <CheckCircle2 className="w-4 h-4 text-[#E03C31] flex-shrink-0 mt-0.5" />
+                                  <CheckCircle2 className="w-4 h-4 text-[#e07631] flex-shrink-0 mt-0.5" />
                                   <span>{feat}</span>
                                 </li>
                               ))}
@@ -886,7 +887,7 @@ export default function App() {
                         <div className="flex justify-end pt-4 border-t border-black/10 gap-3">
                           <button 
                             onClick={() => setSelectedProject(null)}
-                            className="px-6 py-2.5 bg-black hover:bg-[#E03C31] text-white text-xs font-sans font-extrabold uppercase cursor-pointer"
+                            className="px-6 py-2.5 bg-black hover:bg-[#e07631] text-white text-xs font-sans font-extrabold uppercase cursor-pointer"
                           >
                             סגור חלונית
                           </button>
@@ -911,45 +912,7 @@ export default function App() {
               exit={{ opacity: 0, y: -15 }}
               className="space-y-6"
             >
-              
-              {/* Context header */}
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 border border-black/10">
-                <div className="space-y-1">
-                  <h3 className="text-xl font-sans font-black text-[#1A1A1A] flex items-center gap-1.5">
-                    הצגת קורות החיים המקוריים
-                  </h3>
-                  <p className="text-sm text-[#1A1A1A]/85 font-sans font-semibold">
-                    הדף להלן מעובד ישירות מקובץ ה-HTML שצורף אודות איתן ברון, כמו שהוא ללא שום שינוי, בהתאם לדרישתכם.
-                  </p>
-                </div>
-                
-                <div className="flex flex-wrap gap-2">
-                  <a 
-                    href="/resume.html" 
-                    target="_blank" 
-                    className="px-6 py-3 bg-black hover:bg-[#E03C31] text-white text-xs font-sans font-extrabold pb-3 flex items-center gap-1.5 whitespace-nowrap cursor-pointer transition-colors duration-150"
-                  >
-                    פתח בדף חדש להדפסה נוחה
-                    <ExternalLink className="w-4 h-4" />
-                  </a>
-                </div>
-              </div>
-
-              {/* Informative advice message badge */}
-              <div className="bg-[#EFEEED] text-[#1A1A1A] p-4 text-xs sm:text-sm space-y-1 border-l-4 border-[#E03C31] font-sans font-bold">
-                📌 <strong>מדריך למגייס:</strong> דף קורות החיים להלן כולל כפתורים מובנים מצוינים בחלק העליון (ייצוא ל-PDF, ייצוא ל-Word, ייצוא כתמונה). תוכלו להשתמש בהם ישירות מתוך המלבן למטה כדי להוריד את קורות החיים של איתן מיד למחשב שלכם!
-              </div>
-
-              {/* Embedded Frame */}
-              <div className="w-full bg-slate-200 border border-black/25 overflow-hidden relative" style={{ height: "70vh" }}>
-                <iframe 
-                  src="/resume.html" 
-                  title="קורות חיים איתן ברון"
-                  className="w-full h-full border-0 bg-white"
-                  style={{ colorScheme: "light" }}
-                />
-              </div>
-
+              <ResumeViewer />
             </motion.div>
           )}
 
@@ -960,7 +923,7 @@ export default function App() {
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -15 }}
-              className="max-w-4xl mx-auto flex flex-col bg-white border border-black relative" 
+              className="max-w-4xl mx-auto flex flex-col bg-[#FAF9F6] border border-black relative" 
               style={{ height: "72vh" }}
             >
               
@@ -982,7 +945,7 @@ export default function App() {
                 {/* Contact badge info bubble */}
                 <div className="hidden sm:flex text-left flex-col text-xs font-sans font-bold">
                   <span>ליצירת קשר ישיר:</span>
-                  <span className="font-sans font-extrabold text-[#E03C31]">054-3033425</span>
+                  <span className="font-sans font-extrabold text-[#e07631]">054-3033425</span>
                 </div>
               </div>
 
@@ -1004,14 +967,14 @@ export default function App() {
               </div>
 
               {/* Chat Message Window Area */}
-              <div className="flex-grow p-4 sm:p-6 overflow-y-auto bg-white/50 space-y-4">
+              <div className="flex-grow p-4 sm:p-6 overflow-y-auto bg-[#FAF9F6]/50 space-y-4">
                 
                 {chatMessages.map(msg => (
                   <div 
                     key={msg.id}
                     className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
                   >
-                    <div className={`max-w-[85%] p-4 text-sm leading-relaxed border border-black/10 rounded-none space-y-1 ${msg.sender === "user" ? "bg-[#E03C31] text-white" : "bg-[#EFEEED] text-[#1A1A1A]"}`}>
+                    <div className={`max-w-[85%] p-4 text-sm leading-relaxed border border-black/10 rounded-none space-y-1 ${msg.sender === "user" ? "bg-[#e07631] text-white" : "bg-[#EFEEED] text-[#1A1A1A]"}`}>
                       
                       {/* Name Header */}
                       <span className="block text-xs font-sans font-bold uppercase tracking-wider opacity-90">
@@ -1052,7 +1015,7 @@ export default function App() {
               {/* Chat Bottom input form */}
               <form 
                 onSubmit={(e) => { e.preventDefault(); handleSendMessage(inputMessage); }}
-                className="p-4 border-t border-black/10 bg-white flex gap-2"
+                className="p-4 border-t border-black/10 bg-[#FAF9F6] flex gap-2"
               >
                 <input 
                   type="text"
@@ -1060,12 +1023,12 @@ export default function App() {
                   onChange={(e) => setInputMessage(e.target.value)}
                   disabled={isChatLoading}
                   placeholder="שאלו את העוזר הווירטואלי כל שאלה (למשל: מה איתן למד?)"
-                  className="flex-grow px-4 py-3 text-sm bg-white focus:bg-white border border-black/10 focus:border-black rounded-none outline-none font-mono transition-colors"
+                  className="flex-grow px-4 py-3 text-sm bg-[#FAF9F6] focus:bg-[#FAF9F6] border border-black/10 focus:border-black rounded-none outline-none font-mono transition-colors"
                 />
                 <button 
                   type="submit"
                   disabled={!inputMessage.trim() || isChatLoading}
-                  className="px-5 bg-black hover:bg-[#E03C31] disabled:bg-[#EFEEED] disabled:text-[#1A1A1A]/40 text-white rounded-none cursor-pointer transition-colors duration-150 flex items-center justify-center font-mono text-[10px] uppercase font-bold tracking-widest"
+                  className="px-5 bg-black hover:bg-[#e07631] disabled:bg-[#EFEEED] disabled:text-[#1A1A1A]/40 text-white rounded-none cursor-pointer transition-colors duration-150 flex items-center justify-center font-mono text-[10px] uppercase font-bold tracking-widest"
                   aria-label="Send message"
                 >
                   <Send className="w-4 h-4 transform rotate-180" />
@@ -1079,7 +1042,7 @@ export default function App() {
       </main>
 
       {/* Footer widgets */}
-      <footer className="bg-white border-t border-slate-100 py-8 lg:py-12 mt-12">
+      <footer className="bg-[#FAF9F6] border-t border-black/10 py-8 lg:py-12 mt-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
           
           <div className="flex flex-col sm:flex-row justify-between items-center gap-6">
@@ -1144,8 +1107,8 @@ export default function App() {
               className="bg-white max-w-sm w-full p-6 z-10 border border-black space-y-4"
             >
               <div className="flex justify-between items-center border-b border-black/10 pb-3">
-                <h3 className="font-serif italic text-base flex items-center gap-1.5 text-slate-900">
-                  <Lock className="w-4 h-4 text-[#E03C31]" />
+                <h3 className="font-sans font-bold text-base flex items-center gap-1.5 text-slate-900">
+                  <Lock className="w-4 h-4 text-[#e07631]" />
                   כניסת מנהל למערכת העריכה
                 </h3>
                 <button onClick={() => setShowLoginModal(false)} className="text-slate-400 hover:bg-slate-50 p-1 rounded-none cursor-pointer">
@@ -1154,7 +1117,7 @@ export default function App() {
               </div>
 
               <form onSubmit={handleAdminLogin} className="space-y-4 text-right">
-                <p className="text-xs text-[#1A1A1A]/70 leading-relaxed font-serif">
+                <p className="text-xs text-[#1A1A1A]/70 leading-relaxed font-sans">
                   היכנס כדי להוסיף, לערוך או למחוק פרויקטים בתיק העבודות בזמן אמת במהלך ראיונות עבודה!
                 </p>
                 
@@ -1168,7 +1131,7 @@ export default function App() {
                     className="w-full px-3 py-2 text-sm bg-white focus:bg-white border border-black/10 focus:border-black rounded-none outline-none font-mono transition-colors"
                     required
                   />
-                  {loginError && <p className="text-[10px] font-mono font-bold text-[#E03C31] mt-1">{loginError}</p>}
+                  {loginError && <p className="text-[10px] font-mono font-bold text-[#e07631] mt-1">{loginError}</p>}
                 </div>
 
                 <div className="flex justify-end gap-2 pt-2">
@@ -1181,7 +1144,7 @@ export default function App() {
                   </button>
                   <button 
                     type="submit"
-                    className="px-4 py-2 bg-black hover:bg-[#E03C31] text-white rounded-none text-[10px] font-mono uppercase tracking-widest font-bold cursor-pointer"
+                    className="px-4 py-2 bg-black hover:bg-[#e07631] text-white rounded-none text-[10px] font-mono uppercase tracking-widest font-bold cursor-pointer"
                   >
                     התחבר
                   </button>
@@ -1210,8 +1173,8 @@ export default function App() {
               className="bg-white max-w-lg w-full max-h-[85vh] overflow-y-auto p-6 z-10 border border-black space-y-4"
             >
               <div className="flex justify-between items-center border-b border-black/10 pb-3">
-                <h3 className="font-serif italic text-base flex items-center gap-1.5 text-slate-900">
-                  <Briefcase className="w-4 h-4 text-[#E03C31]" />
+                <h3 className="font-sans font-bold text-base flex items-center gap-1.5 text-slate-900">
+                  <Briefcase className="w-4 h-4 text-[#e07631]" />
                   {editingProject ? "עריכת פרויקט קיים" : "הוספת פרויקט חדש לתיק העבודות"}
                 </h3>
                 <button onClick={() => setShowAddEditModal(false)} className="text-slate-400 hover:bg-slate-50 p-1.5 rounded-none cursor-pointer">
@@ -1289,7 +1252,7 @@ export default function App() {
                     onChange={(e) => setFormDesc(e.target.value)}
                     placeholder="תיאור תמציתי של הפרויקט במספר משפטים..."
                     rows={2}
-                    className="w-full px-3 py-2 text-xs bg-white border border-black/15 rounded-none outline-none resize-none font-serif"
+                    className="w-full px-3 py-2 text-xs bg-white border border-black/15 rounded-none outline-none resize-none font-sans"
                     required
                   />
                 </div>
@@ -1301,7 +1264,7 @@ export default function App() {
                     onChange={(e) => setFormLongDesc(e.target.value)}
                     placeholder="פירוט מלא של הרקע, משמעות הפרויקט והצורך שעליו ענה..."
                     rows={3}
-                    className="w-full px-3 py-2 text-xs bg-white border border-black/15 rounded-none outline-none resize-y font-serif"
+                    className="w-full px-3 py-2 text-xs bg-white border border-black/15 rounded-none outline-none resize-y font-sans"
                   />
                 </div>
 
@@ -1328,7 +1291,7 @@ export default function App() {
                     onChange={(e) => setFormFeatures(e.target.value)}
                     rows={3}
                     placeholder="פיתוח תשתיות ענן מהירות בבנק&#10;אבטחת מידע קפדנית ברמה פיננסית"
-                    className="w-full px-3 py-2 text-xs bg-white border border-black/15 rounded-none outline-none resize-y font-serif"
+                    className="w-full px-3 py-2 text-xs bg-white border border-black/15 rounded-none outline-none resize-y font-sans"
                   />
                 </div>
 
@@ -1342,7 +1305,7 @@ export default function App() {
                   </button>
                   <button 
                     type="submit"
-                    className="px-5 py-2 bg-black hover:bg-[#E03C31] text-white rounded-none text-[10px] font-mono uppercase tracking-widest font-bold cursor-pointer"
+                    className="px-5 py-2 bg-black hover:bg-[#e07631] text-white rounded-none text-[10px] font-mono uppercase tracking-widest font-bold cursor-pointer"
                   >
                     שמור שינויים
                   </button>
