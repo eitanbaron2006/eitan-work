@@ -1,0 +1,6 @@
+{
+  "name": "איתן ברון - תיק עבודות וקורות חיים",
+  "description": "אתר פורטפוליו מקצועי של איתן ברון, הכולל את קורות החיים המקוריים שלו כסימולטור אינטראקטיבי ובנוסף עוזר AI חכם למגייסים המבוסס על מודל Gemini.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
