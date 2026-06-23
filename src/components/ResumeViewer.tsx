@@ -1,5 +1,11 @@
 import React, { useEffect, useState, useRef } from "react";
 import { Download, FileDown, Image, Monitor, Smartphone, RefreshCw } from "lucide-react";
+import { RESUME_RAW_CSS, RESUME_RAW_HTML } from "./ResumeData";
+
+const ResumeMarkup = React.memo(({ html }: { html: string }) => (
+  <div dangerouslySetInnerHTML={{ __html: html }} />
+));
+ResumeMarkup.displayName = "ResumeMarkup";
 
 export const ResumeViewer: React.FC = () => {
   const [htmlContent, setHtmlContent] = useState<string>("");
@@ -9,6 +15,73 @@ export const ResumeViewer: React.FC = () => {
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [scriptsLoaded, setScriptsLoaded] = useState<boolean>(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Fullscreen view states
+  const [isFullscreenOpen, setIsFullscreenOpen] = useState<boolean>(false);
+  const [fsPages, setFsPages] = useState<string[]>([]);
+  const [fsPageIndex, setFsPageIndex] = useState<number>(0);
+
+  const handleFsPrev = () => {
+    setFsPageIndex(prev => (prev > 0 ? prev - 1 : prev));
+  };
+
+  const handleFsNext = () => {
+    setFsPageIndex(prev => (prev < fsPages.length - 1 ? prev + 1 : prev));
+  };
+
+  const openFullscreen = (pageId: string) => {
+    if (!containerRef.current) return;
+    const pages = Array.from(containerRef.current.querySelectorAll("#stage .page")) as HTMLElement[];
+    if (pages.length === 0) return;
+
+    // Visual order check (RTL reversed)
+    const isRtl = lang !== "en";
+    const orderedPages = isRtl ? [...pages].reverse() : pages;
+
+    const clickedPage = pages.find(p => p.id === pageId);
+    if (!clickedPage) return;
+
+    const idx = orderedPages.indexOf(clickedPage);
+    setFsPages(orderedPages.map(p => p.outerHTML));
+    setFsPageIndex(idx);
+    setIsFullscreenOpen(true);
+  };
+
+  const handleStageClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (viewMode !== "wide") return;
+    const target = e.target as HTMLElement;
+    const pageEl = target.closest(".page") as HTMLElement;
+    if (pageEl) {
+      openFullscreen(pageEl.id);
+    }
+  };
+
+  // Fullscreen keyboard navigation handler
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isFullscreenOpen) return;
+      if (e.key === "Escape") {
+        setIsFullscreenOpen(false);
+      } else if (e.key === "ArrowLeft") {
+        handleFsPrev();
+      } else if (e.key === "ArrowRight") {
+        handleFsNext();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isFullscreenOpen, fsPageIndex, fsPages]);
+
+
+  // Helper: extract a readable error message from any thrown value
+  const getErrorMessage = (e: unknown): string => {
+    if (e instanceof Error) return e.message;
+    if (typeof e === "string") return e;
+    try { return JSON.stringify(e); } catch { return String(e); }
+  };
 
   // Load external scripts dynamically
   useEffect(() => {
@@ -40,46 +113,36 @@ export const ResumeViewer: React.FC = () => {
       });
   }, []);
 
-  // Fetch the resume HTML file and extract styles & stage elements
+  // Initialize resume content and extract styles & stage elements statically
   useEffect(() => {
-    fetch("/resume.html")
-      .then((res) => {
-        if (!res.ok) throw new Error("Could not find resume.html");
-        return res.text();
-      })
-      .then((html) => {
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, "text/html");
+    // Scope styles to stay inside .cv-body-wrapper rather than polluting page body
+    let cleanStyles = RESUME_RAW_CSS
+      .replace(/body\s*{/g, ".cv-body-wrapper {")
+      .replace(/html,\s*body\s*{/g, ".cv-html-body-wrapper {")
+      .replace(/html\.exporting-shot/g, ".exporting-shot");
 
-        // Extract style content
-        const styleTags = doc.querySelectorAll("style");
-        let mergedStyles = "";
-        styleTags.forEach((style) => {
-          mergedStyles += style.textContent || "";
-        });
+    // Change default background color from #5b6578 to #F4F1EA
+    cleanStyles = cleanStyles.replace(/#5b6578/g, "#F4F1EA");
 
-        // Scope styles to stay inside .cv-body-wrapper rather than polluting page body
-        let cleanStyles = mergedStyles
-          .replace(/body\s*{/g, ".cv-body-wrapper {")
-          .replace(/html,\s*body\s*{/g, ".cv-html-body-wrapper {")
-          .replace(/html\.exporting-shot/g, ".exporting-shot");
+    // Override page shadow to exactly 0 12px 40px rgba(0,0,0,0.35)
+    cleanStyles += `
+      .cv-view .page {
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35) !important;
+        color: var(--ink, #2a2f3a) !important;
+        font-family: 'Heebo', Arial, sans-serif !important;
+        line-height: normal !important;
+      }
+      .cv-body-wrapper,
+      .cv-view #stage {
+        line-height: normal !important;
+      }
+      .cv-body-wrapper {
+        background: #F4F1EA !important;
+      }
+    `;
 
-        setCssContent(cleanStyles);
-
-        // Extract stage contents
-        const stage = doc.getElementById("stage");
-        if (stage) {
-          // Remove default buttons/switches in raw HTML content so we can supply polished native React buttons
-          setHtmlContent(stage.outerHTML);
-        } else {
-          // Fallback if structure is slightly different
-          const bodyContent = doc.body.innerHTML;
-          setHtmlContent(bodyContent);
-        }
-      })
-      .catch((err) => {
-        console.error("Error loading original resume html:", err);
-      });
+    setCssContent(cleanStyles);
+    setHtmlContent(RESUME_RAW_HTML);
   }, []);
 
   // Handle translation toggles (identical to the script logic of resume.html but reactive)
@@ -111,11 +174,15 @@ export const ResumeViewer: React.FC = () => {
   // Handle view scale and styling updates responsive to window resizing or switching normal/wide tab
   const updateWideScale = () => {
     if (viewMode !== "wide" || !containerRef.current) return;
+    const docEl = containerRef.current.querySelector("#doc") as HTMLDivElement;
     const stage = containerRef.current.querySelector("#stage") as HTMLDivElement;
-    if (!stage) return;
+    if (!docEl || !stage) return;
 
+    docEl.style.height = "";
+    const top = docEl.getBoundingClientRect().top;
+    const availH = window.innerHeight - top - 16;
     const availW = containerRef.current.clientWidth - 32;
-    const availH = window.innerHeight * 0.75; // Estimate comfortable height inside active scope
+    docEl.style.height = `${availH}px`;
 
     const naturalW = stage.scrollWidth || (794 * 2 + 30);
     const naturalH = stage.scrollHeight || 1123;
@@ -129,19 +196,25 @@ export const ResumeViewer: React.FC = () => {
       updateWideScale();
       window.addEventListener("resize", updateWideScale);
     } else {
+      const docEl = containerRef.current?.querySelector("#doc") as HTMLDivElement;
       const stage = containerRef.current?.querySelector("#stage") as HTMLDivElement;
-      if (stage) {
-        stage.style.removeProperty("--wide-scale");
-      }
+      if (docEl) docEl.style.height = "";
+      if (stage) stage.style.removeProperty("--wide-scale");
     }
     return () => {
       window.removeEventListener("resize", updateWideScale);
     };
   }, [viewMode, htmlContent]);
 
-  // Export functions (implemented with native window references matching resume.html original export mechanics)
-  const setButtonsBusy = (isBusy: boolean) => {
-    setIsExporting(isBusy);
+  // Helper functions for HD export drawing (matching original resume.html logic exactly)
+  const parseExportShadowSpread = (value: string) => {
+    const parts = String(value || "").match(/-?\d*\.?\d+px/g) || [];
+    return parts.length >= 4 ? parseFloat(parts[3]) : 0;
+  };
+
+  const parseExportShadowColor = (value: string, fallback: string) => {
+    const match = String(value || "").match(/^(rgba?\([^)]+\)|#[0-9a-fA-F]+|[a-zA-Z]+)/);
+    return match ? match[1] : fallback;
   };
 
   const runShot = async (el: HTMLElement) => {
@@ -149,167 +222,224 @@ export const ResumeViewer: React.FC = () => {
     if (!html2canvas) throw new Error("html2canvas library not loaded");
 
     const scale = 3;
-    const captureRect = el.getBoundingClientRect();
-    const captureWidth = Math.ceil(captureRect.width);
-    const captureHeight = Math.ceil(Math.max(captureRect.height, el.scrollHeight));
-
-    const canvas = await html2canvas(el, {
-      scale,
-      backgroundColor: "#ffffff",
-      useCORS: true,
-      width: captureWidth,
-      height: captureHeight,
-      windowWidth: captureWidth,
-      windowHeight: captureHeight,
-      onclone: (clonedDoc: Document) => {
-        clonedDoc.documentElement.classList.add("exporting-shot");
-        const clonedPage = clonedDoc.querySelector(".page") as HTMLElement;
-        if (clonedPage) {
-          clonedPage.style.width = `${captureWidth}px`;
-          clonedPage.style.maxWidth = "none";
-        }
-        const style = clonedDoc.createElement("style");
-        style.textContent = `
-          .experience::before, .edu-timeline::before { content: none !important; display: none !important; opacity: 0 !important; background: transparent !important; }
-          .exp-dot, .edu-dot { visibility: hidden !important; box-shadow: none !important; }
-        `;
-        clonedDoc.head.appendChild(style);
-      }
-    });
-
-    const ctx = canvas.getContext("2d");
-    if (ctx) {
-      ctx.save();
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      const pr = captureRect;
-
-      // Redraw the timeline and dots manually over standard canvas drawing to guarantee HD prints
-      el.querySelectorAll(".experience, .edu-timeline").forEach((timeline: any) => {
-        const firstDot = timeline.querySelector(".exp-dot, .edu-dot");
-        if (!firstDot) return;
-        const timelineRect = timeline.getBoundingClientRect();
-        const dotRect = firstDot.getBoundingClientRect();
-        const cssObj = getComputedStyle(timeline, "::before");
-        const timelineCss = getComputedStyle(timeline);
-
-        const railWidth = parseFloat(cssObj.width) || 0;
-        const railTop = parseFloat(cssObj.top) || 0;
-        const railBottom = parseFloat(cssObj.bottom) || 0;
-        const railRight = parseFloat(cssObj.right);
-        const railLeft = parseFloat(cssObj.left);
-
-        let centerCssX = dotRect.left - pr.left + dotRect.width / 2;
-        if (Number.isFinite(railRight)) {
-          centerCssX =
-            timelineRect.right - pr.left - (parseFloat(timelineCss.paddingLeft) || 0) - railRight + railWidth / 2;
-        } else if (Number.isFinite(railLeft)) {
-          centerCssX =
-            timelineRect.left - pr.left + (parseFloat(timelineCss.paddingRight) || 0) + railLeft + railWidth / 2;
-        }
-
-        const cssPx = canvas.width / pr.width;
-
-        // Draw the rail
-        if (railWidth > 0 && timelineRect.bottom > timelineRect.top) {
-          ctx.beginPath();
-          ctx.moveTo(centerCssX * cssPx, (timelineRect.top - pr.top + railTop) * cssPx);
-          ctx.lineTo(centerCssX * cssPx, (timelineRect.bottom - pr.top - railBottom) * cssPx);
-          ctx.lineWidth = railWidth * cssPx;
-          ctx.lineCap = "round";
-          ctx.strokeStyle = cssObj.backgroundColor || "#b9c6dd";
-          ctx.stroke();
-        }
-      });
-
-      // Redraw dots
-      el.querySelectorAll(".exp-dot, .edu-dot").forEach((dot: any) => {
-        const r = dot.getBoundingClientRect();
-        const cssObj = getComputedStyle(dot);
-        const cssPx = canvas.width / pr.width;
-        const borderWidth = parseFloat(cssObj.borderTopWidth) || 0;
-
-        const parseSpread = (boxShadowStr: string) => {
-          const parts = boxShadowStr.match(/-?\d*\.?\d+px/g) || [];
-          return parts.length >= 4 ? parseFloat(parts[3]) : 0;
-        };
-
-        const parseColor = (boxShadowStr: string) => {
-          const match = boxShadowStr.match(/^(rgba?\([^)]+\)|#[0-9a-fA-F]+|[a-zA-Z]+)/);
-          return match ? match[1] : "#b9c6dd";
-        };
-
-        const shadowSpread = parseSpread(cssObj.boxShadow);
-        const shadowColor = parseColor(cssObj.boxShadow);
-
-        const cx = (r.left - pr.left + r.width / 2) * cssPx;
-        const cy = (r.top - pr.top + r.height / 2) * cssPx;
-        const borderBoxRadius = (r.width / 2) * cssPx;
-
-        const outerRadius = borderBoxRadius + shadowSpread * cssPx;
-        const borderRadius = borderBoxRadius;
-        const fillRadius = Math.max(0, borderBoxRadius - borderWidth * cssPx);
-
-        // Render outer spread ring
-        if (outerRadius > 0) {
-          ctx.beginPath();
-          ctx.arc(cx, cy, outerRadius, 0, 2 * Math.PI);
-          ctx.fillStyle = shadowColor;
-          ctx.fill();
-        }
-
-        // Render line border
-        if (borderRadius > 0) {
-          ctx.beginPath();
-          ctx.arc(cx, cy, borderRadius, 0, 2 * Math.PI);
-          ctx.fillStyle = cssObj.borderTopColor;
-          ctx.fill();
-        }
-
-        // Render inner dot core
-        if (fillRadius > 0) {
-          ctx.beginPath();
-          ctx.arc(cx, cy, fillRadius, 0, 2 * Math.PI);
-          ctx.fillStyle = cssObj.backgroundColor;
-          ctx.fill();
-        }
-      });
-
-      ctx.restore();
+    const captureWidth = el.offsetWidth;
+    if (captureWidth === 0) {
+      throw new Error(`Source page offsetWidth is 0`);
     }
 
-    return canvas;
+    const targetPage = el.cloneNode(true) as HTMLElement;
+
+    // Capture a clean clone in the same document. Calling html2canvas from the
+    // parent window on an element inside a temporary iframe can produce a 0x0
+    // canvas in Chrome, which serializes to the empty "data:," URL.
+    const exportHost = document.createElement("div");
+    exportHost.className = "resume-export-host";
+    exportHost.setAttribute("aria-hidden", "true");
+    exportHost.setAttribute("lang", lang === "he" ? "he" : "en");
+    exportHost.setAttribute("dir", lang === "he" ? "rtl" : "ltr");
+    exportHost.style.cssText = [
+      "position:fixed",
+      "left:-9999px",
+      "top:0",
+      `width:${captureWidth}px`,
+      "min-height:100px",
+      "z-index:-2147483647",
+      "pointer-events:none",
+      "background:#fff",
+      "overflow:visible",
+    ].join(";");
+
+    exportHost.appendChild(targetPage);
+    document.body.appendChild(exportHost);
+
+    // Wait for layout so client rects are populated correctly on the clone
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+    const targetPageRect = targetPage.getBoundingClientRect();
+    const captureHeight = Math.max(targetPage.offsetHeight, targetPage.scrollHeight);
+    if (captureHeight === 0 || targetPageRect.width === 0) {
+      document.body.removeChild(exportHost);
+      throw new Error(`Cloned page rendered at ${targetPageRect.width}x${captureHeight}`);
+    }
+
+    const railMetrics = Array.from(targetPage.querySelectorAll(".experience, .edu-timeline"))
+      .map((timeline: any) => {
+        const firstDot = timeline.querySelector(".exp-dot, .edu-dot");
+        if (!firstDot) return null;
+        const timelineRect = timeline.getBoundingClientRect();
+        const dotRect = firstDot.getBoundingClientRect();
+        const css = getComputedStyle(timeline, "::before");
+        const railTop = parseFloat(css.top) || 0;
+        const railBottom = parseFloat(css.bottom) || 0;
+        const lineWidth = parseFloat(css.width) || 0;
+        return {
+          centerX: dotRect.left - targetPageRect.left + dotRect.width / 2,
+          y1: timelineRect.top - targetPageRect.top + railTop,
+          y2: timelineRect.bottom - targetPageRect.top - railBottom,
+          lineWidth,
+          strokeStyle: css.backgroundColor || "#b9c6dd",
+        };
+      })
+      .filter((metric): metric is { centerX: number; y1: number; y2: number; lineWidth: number; strokeStyle: string } => Boolean(metric));
+
+    const dotMetrics = Array.from(targetPage.querySelectorAll(".exp-dot, .edu-dot")).map((dot: any) => {
+      const rect = dot.getBoundingClientRect();
+      const css = getComputedStyle(dot);
+      return {
+        cx: rect.left - targetPageRect.left + rect.width / 2,
+        cy: rect.top - targetPageRect.top + rect.height / 2,
+        radius: rect.width / 2,
+        borderWidth: parseFloat(css.borderTopWidth) || 0,
+        shadowSpread: parseExportShadowSpread(css.boxShadow),
+        shadowStyle: parseExportShadowColor(css.boxShadow, "#b9c6dd"),
+        borderStyle: css.borderTopColor,
+        fillStyle: css.backgroundColor,
+      };
+    });
+
+    const exportStyle = document.createElement("style");
+    exportStyle.textContent = `
+      ${RESUME_RAW_CSS}
+
+      /* Flexbox gap workarounds for html2canvas */
+      [dir="rtl"] .contact .item svg { margin-left: 7px !important; }
+      [dir="ltr"] .contact .item svg { margin-right: 7px !important; }
+      [dir="rtl"] .personal .item svg { margin-left: 6px !important; }
+      [dir="ltr"] .personal .item svg { margin-right: 6px !important; }
+      [dir="rtl"] .photo-wrap { margin-right: 18px !important; }
+      [dir="ltr"] .photo-wrap { margin-left: 18px !important; }
+      [dir="rtl"] .sec-icon { margin-left: 11px !important; }
+      [dir="ltr"] .sec-icon { margin-right: 11px !important; }
+      [dir="rtl"] .know-label { margin-left: 10px !important; }
+      [dir="ltr"] .know-label { margin-right: 10px !important; }
+      [dir="rtl"] .skill { margin-left: 5px !important; margin-bottom: 5px !important; }
+      [dir="ltr"] .skill { margin-right: 5px !important; margin-bottom: 5px !important; }
+      [dir="rtl"] .lang-item::before { margin-left: 9px !important; }
+      [dir="ltr"] .lang-item::before { margin-right: 9px !important; }
+      [dir="rtl"] .footer svg { margin-left: 12px !important; }
+      [dir="ltr"] .footer svg { margin-right: 12px !important; }
+
+      .resume-export-host .experience::before,
+      .resume-export-host .edu-timeline::before {
+        content: none !important;
+        display: none !important;
+        opacity: 0 !important;
+        background: transparent !important;
+      }
+      .resume-export-host .exp-dot,
+      .resume-export-host .edu-dot {
+        visibility: hidden !important;
+        box-shadow: none !important;
+      }
+      .resume-export-host .page {
+        box-shadow: none !important;
+        color: var(--ink, #2a2f3a) !important;
+        font-family: 'Heebo', Arial, sans-serif !important;
+        line-height: normal !important;
+        width: ${captureWidth}px !important;
+        max-width: none !important;
+      }
+    `;
+    exportHost.insertBefore(exportStyle, targetPage);
+
+    await document.fonts.ready;
+
+    try {
+      if (targetPage.offsetWidth === 0 || targetPage.offsetHeight === 0) {
+        throw new Error(
+          `Export clone rendered at ${targetPage.offsetWidth}x${targetPage.offsetHeight} ` +
+            `(source ${captureWidth}x${captureHeight}, host ${exportHost.offsetWidth}x${exportHost.offsetHeight})`
+        );
+      }
+
+      const canvas = await html2canvas(targetPage, {
+        scale,
+        backgroundColor: "#ffffff",
+        useCORS: true,
+        width: captureWidth,
+        height: captureHeight,
+        windowWidth: captureWidth,
+        windowHeight: captureHeight,
+      });
+
+      // Post-process: redraw timeline rails and dots in HD on the canvas.
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        const cssPx = scale;
+
+        railMetrics.forEach((rail) => {
+          if (rail.lineWidth > 0 && rail.y2 > rail.y1) {
+            ctx.beginPath();
+            ctx.moveTo(rail.centerX * cssPx, rail.y1 * cssPx);
+            ctx.lineTo(rail.centerX * cssPx, rail.y2 * cssPx);
+            ctx.lineWidth = rail.lineWidth * cssPx;
+            ctx.lineCap = "round";
+            ctx.strokeStyle = rail.strokeStyle;
+            ctx.stroke();
+          }
+        });
+
+        dotMetrics.forEach((dot) => {
+          const cx = dot.cx * cssPx;
+          const cy = dot.cy * cssPx;
+          const borderBoxRadius = dot.radius * cssPx;
+
+          const rings: [number, string][] = [
+            [borderBoxRadius + dot.shadowSpread * cssPx, dot.shadowStyle],
+            [borderBoxRadius, dot.borderStyle],
+            [Math.max(0, borderBoxRadius - dot.borderWidth * cssPx), dot.fillStyle],
+          ];
+          rings.forEach(([radius, fillStyle]) => {
+            if (radius <= 0) return;
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius, 0, 2 * Math.PI);
+            ctx.fillStyle = fillStyle;
+            ctx.fill();
+          });
+        });
+
+        ctx.restore();
+      }
+
+      return canvas;
+    } finally {
+      document.body.removeChild(exportHost);
+    }
   };
 
   const handleExportPNG = async () => {
-    if (!scriptsLoaded) return;
-    setButtonsBusy(true);
+    if (!scriptsLoaded || !containerRef.current) return;
+    setIsExporting(true);
     try {
-      const pages = containerRef.current?.querySelectorAll(".page");
-      if (!pages || pages.length === 0) throw new Error("No page elements found under container");
+      const pages = Array.from(containerRef.current.querySelectorAll("#stage .page")) as HTMLElement[];
+      if (pages.length === 0) throw new Error("No page elements found in resume");
 
       for (let i = 0; i < pages.length; i++) {
-        const canvas = await runShot(pages[i] as HTMLElement);
+        const canvas = await runShot(pages[i]);
         const link = document.createElement("a");
         link.download = (lang === "en" ? "Eitan_Baron_Resume_page_" : "איתן_ברון_קורות_חיים_עמוד_") + (i + 1) + ".png";
         link.href = canvas.toDataURL("image/png");
+        document.body.appendChild(link);
         link.click();
+        document.body.removeChild(link);
         if (i < pages.length - 1) {
           await new Promise((r) => setTimeout(r, 500));
         }
       }
-    } catch (e: any) {
-      alert(lang === "en" ? "Exception exporting Image: " + e.message : "שגיאה בייצוא תמונה: " + e.message);
+    } catch (e: unknown) {
+      console.error("Export PNG error:", e);
+      alert(lang === "en" ? "Exception exporting Image: " + getErrorMessage(e) : "שגיאה בייצוא תמונה: " + getErrorMessage(e));
+    } finally {
+      setIsExporting(false);
     }
-    setButtonsBusy(false);
   };
 
   const handleExportPDF = async () => {
-    if (!scriptsLoaded) return;
-    setButtonsBusy(true);
+    if (!scriptsLoaded || !containerRef.current) return;
+    setIsExporting(true);
     try {
-      const pages = containerRef.current?.querySelectorAll(".page");
-      if (!pages || pages.length === 0) throw new Error("No pages found");
-
       const windowJS = window as any;
       const jspdfObj = windowJS.jspdf;
       if (!jspdfObj) throw new Error("jsPDF library not accessible");
@@ -318,22 +448,31 @@ export const ResumeViewer: React.FC = () => {
       const pw = pdf.internal.pageSize.getWidth();
       const ph = pdf.internal.pageSize.getHeight();
 
+      const pages = Array.from(containerRef.current.querySelectorAll("#stage .page")) as HTMLElement[];
+      if (pages.length === 0) throw new Error("No pages found in resume");
+
       for (let i = 0; i < pages.length; i++) {
-        const canvas = await runShot(pages[i] as HTMLElement);
+        const canvas = await runShot(pages[i]);
         const img = canvas.toDataURL("image/jpeg", 0.95);
         if (i > 0) pdf.addPage();
         pdf.addImage(img, "JPEG", 0, 0, pw, ph);
       }
       pdf.save(lang === "en" ? "Eitan_Baron_Resume.pdf" : "איתן_ברון_קורות_חיים.pdf");
-    } catch (e: any) {
-      alert(lang === "en" ? "Exception exporting PDF: " + e.message : "שגיאה בייצוא PDF: " + e.message);
+    } catch (e: unknown) {
+      console.error("Export PDF error:", e);
+      alert(lang === "en" ? "Exception exporting PDF: " + getErrorMessage(e) : "שגיאה בייצוא PDF: " + getErrorMessage(e));
+    } finally {
+      setIsExporting(false);
     }
-    setButtonsBusy(false);
   };
 
   const handleExportWord = async () => {
+    await handleExportWordLegacy();
+  };
+
+  const handleExportWordLegacy = async () => {
     if (!scriptsLoaded) return;
-    setButtonsBusy(true);
+    setIsExporting(true);
     try {
       const D = (window as any).docx;
       if (!D) throw new Error("docx package not loaded correctly");
@@ -484,7 +623,7 @@ export const ResumeViewer: React.FC = () => {
                           size: 22,
                           color: navy,
                           font: f,
-                          rightToLeft: true
+                          rightToLeft: false
                         })
                       ]
                     }),
@@ -706,7 +845,7 @@ export const ResumeViewer: React.FC = () => {
                 bidirectional: docRtl,
                 spacing: { after: 60 },
                 children: [
-                  new D.TextRun({ text: label + ":  ", bold: true, size: 19, color: navy, font: f, rightToLeft: docRtl, rtl: docRtl }),
+                  new D.TextRun({ text: label + ":  " + (docRtl ? "\u200F" : ""), bold: true, size: 19, color: navy, font: f, rightToLeft: docRtl, rtl: docRtl }),
                   new D.TextRun({ text: skills, size: 19, color: "2b5aa0", font: f })
                 ]
               })
@@ -911,10 +1050,11 @@ export const ResumeViewer: React.FC = () => {
       link.download = lang === "en" ? "Eitan_Baron_Resume.docx" : "איתן_ברון_קורות_חיים.docx";
       link.click();
       URL.revokeObjectURL(url);
-    } catch (e: any) {
-      alert(lang === "en" ? "Error exporting Word: " + e.message : "שגיאה בייצוא ל-Word: " + e.message);
+    } catch (e: unknown) {
+      console.error("Export Word error:", e);
+      alert(lang === "en" ? "Error exporting Word: " + getErrorMessage(e) : "שגיאה בייצוא ל-Word: " + getErrorMessage(e));
     }
-    setButtonsBusy(false);
+    setIsExporting(false);
   };
 
   return (
@@ -924,8 +1064,8 @@ export const ResumeViewer: React.FC = () => {
 
       {/* Modern High-End Swiss Controller Panel */}
       <div className="bg-[#FAF9F6] p-6 border border-black/10 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-6">
-        <div className="space-y-1 text-right">
-          <h3 className="text-xl font-sans font-black text-[#1A1A1A] flex items-center justify-end gap-1.5 leading-none">
+        <div className="space-y-1 text-left">
+          <h3 className="text-xl font-sans font-black text-[#1A1A1A] flex items-center justify-start gap-1.5 leading-none">
             מסוף קורות חיים של איתן
           </h3>
           <p className="text-xs sm:text-sm text-[#1A1A1A]/70 font-sans font-semibold">
@@ -1020,15 +1160,18 @@ export const ResumeViewer: React.FC = () => {
       </div>
 
       {/* CV Interactive Scrolling Stage Center Container */}
-      <div className="cv-body-wrapper bg-[#5b6578] py-8 px-4 border border-black/10 overflow-x-auto select-none rounded-none flex justify-center">
+      <div className="cv-body-wrapper bg-[#F4F1EA] py-8 px-4 border border-black/10 overflow-x-auto select-none rounded-none flex justify-center">
         {htmlContent ? (
           <div
             ref={containerRef}
             className={`cv-view select-text text-right ${viewMode === "wide" ? "wide" : ""}`}
-            style={{ width: "100%", maxWidth: "794px" }}
+            style={{ width: "100%", maxWidth: viewMode === "wide" ? "none" : "794px" }}
+            onClick={handleStageClick}
           >
             {/* Direct injection of stage markup, strictly guarded to avoid any styling leaking out */}
-            <div dangerouslySetInnerHTML={{ __html: htmlContent }} />
+            <div id="doc" className={viewMode === "wide" ? "wide" : ""}>
+              <ResumeMarkup html={htmlContent} />
+            </div>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-24 text-white/70 space-y-3">
@@ -1037,6 +1180,43 @@ export const ResumeViewer: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Fullscreen single-page viewer (wide view only) */}
+      {isFullscreenOpen && (
+        <div id="fsOverlay" style={{ display: "flex" }} dir={lang === "he" ? "rtl" : "ltr"}>
+          {fsPageIndex > 0 && (
+            <button
+              id="fsLeft"
+              className="fs-arrow fs-left"
+              onClick={handleFsPrev}
+              aria-label="prev"
+            >
+              &#8249;
+            </button>
+          )}
+          <div id="fsScroll">
+            <div id="fsPage" dangerouslySetInnerHTML={{ __html: fsPages[fsPageIndex] }} />
+          </div>
+          {fsPageIndex < fsPages.length - 1 && (
+            <button
+              id="fsRight"
+              className="fs-arrow fs-right"
+              onClick={handleFsNext}
+              aria-label="next"
+            >
+              &#8250;
+            </button>
+          )}
+          <button
+            id="fsClose"
+            className="fs-close"
+            onClick={() => setIsFullscreenOpen(false)}
+            aria-label="close"
+          >
+            &#10005;
+          </button>
+        </div>
+      )}
     </div>
   );
 };
