@@ -1,6 +1,17 @@
 import React, { useEffect, useState, useRef } from "react";
 import { Download, FileDown, Image, Monitor, Smartphone, RefreshCw } from "lucide-react";
 import { RESUME_RAW_CSS, RESUME_RAW_HTML } from "./ResumeData";
+import {
+  RESUME_EXPORT_WIDTH,
+  RESUME_EXPORT_SANDBOX_ATTR,
+  RESUME_ISOLATION_CLASS,
+  buildExportSandboxAttributes,
+  buildExportSandboxCss,
+  buildExportSandboxStyle,
+  buildIsolatedResumeCss,
+  buildKnowledgeLabelSpec,
+  buildSubtitleSpec,
+} from "./ResumeExportUtils";
 
 const ResumeMarkup = React.memo(({ html }: { html: string }) => (
   <div dangerouslySetInnerHTML={{ __html: html }} />
@@ -115,16 +126,14 @@ export const ResumeViewer: React.FC = () => {
 
   // Initialize resume content and extract styles & stage elements statically
   useEffect(() => {
-    // Scope styles to stay inside .cv-body-wrapper rather than polluting page body
+    // Keep the visible resume on the same styling path it had before export isolation.
     let cleanStyles = RESUME_RAW_CSS
       .replace(/body\s*{/g, ".cv-body-wrapper {")
       .replace(/html,\s*body\s*{/g, ".cv-html-body-wrapper {")
       .replace(/html\.exporting-shot/g, ".exporting-shot");
 
-    // Change default background color from #5b6578 to #F4F1EA
     cleanStyles = cleanStyles.replace(/#5b6578/g, "#F4F1EA");
 
-    // Override page shadow to exactly 0 12px 40px rgba(0,0,0,0.35)
     cleanStyles += `
       .cv-view .page {
         box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35) !important;
@@ -217,207 +226,252 @@ export const ResumeViewer: React.FC = () => {
     return match ? match[1] : fallback;
   };
 
-  const runShot = async (el: HTMLElement) => {
+  const exportDotPaintMetrics = (
+    dotRect: DOMRect,
+    pageRect: DOMRect,
+    canvasWidth: number,
+    styles: {
+      borderWidth: number;
+      shadowSpread: number;
+      fillStyle: string;
+      borderStyle: string;
+      shadowStyle: string;
+    },
+  ) => {
+    const cssPx = canvasWidth / pageRect.width;
+    const borderBoxRadius = (dotRect.width / 2) * cssPx;
+    return {
+      cx: (dotRect.left - pageRect.left + dotRect.width / 2) * cssPx,
+      cy: (dotRect.top - pageRect.top + dotRect.height / 2) * cssPx,
+      outerRadius: borderBoxRadius + styles.shadowSpread * cssPx,
+      borderRadius: borderBoxRadius,
+      fillRadius: Math.max(0, borderBoxRadius - styles.borderWidth * cssPx),
+      fillStyle: styles.fillStyle,
+      borderStyle: styles.borderStyle,
+      shadowStyle: styles.shadowStyle,
+    };
+  };
+
+  const exportTimelineRailMetrics = (
+    timelineRect: DOMRect,
+    pageRect: DOMRect,
+    canvasWidth: number,
+    centerCssX: number,
+    styles: { top: number; bottom: number; width: number; strokeStyle: string },
+  ) => {
+    const cssPx = canvasWidth / pageRect.width;
+    return {
+      x: centerCssX * cssPx,
+      y1: (timelineRect.top - pageRect.top + styles.top) * cssPx,
+      y2: (timelineRect.bottom - pageRect.top - styles.bottom) * cssPx,
+      lineWidth: styles.width * cssPx,
+      strokeStyle: styles.strokeStyle,
+    };
+  };
+
+  type ExportSandbox = {
+    id: string;
+    host: HTMLDivElement;
+    pages: HTMLElement[];
+    dispose: () => void;
+  };
+
+  const applyNaturalExportPageWidth = (page: HTMLElement) => {
+    page.style.width = `${RESUME_EXPORT_WIDTH}px`;
+    page.style.maxWidth = "none";
+  };
+
+  const createExportSandbox = (): ExportSandbox => {
+    const liveDoc = containerRef.current?.querySelector("#doc") as HTMLElement | null;
+    if (!liveDoc) throw new Error("Resume export layout is not mounted");
+
+    const sandboxId = `resume-export-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const host = document.createElement("div");
+    const attributes = buildExportSandboxAttributes(lang, sandboxId);
+    Object.entries(attributes).forEach(([name, value]) => {
+      host.setAttribute(name, value);
+    });
+    Object.assign(host.style, buildExportSandboxStyle());
+
+    const exportDoc = liveDoc.cloneNode(true) as HTMLElement;
+    exportDoc.classList.remove("wide");
+    exportDoc.classList.add(RESUME_ISOLATION_CLASS);
+    exportDoc.style.width = `${RESUME_EXPORT_WIDTH}px`;
+    exportDoc.style.height = "";
+    exportDoc.style.maxWidth = "none";
+
+    const exportStage = exportDoc.querySelector("#stage") as HTMLElement | null;
+    if (!exportStage) throw new Error("Resume export stage is not mounted");
+    exportStage.style.width = `${RESUME_EXPORT_WIDTH}px`;
+    exportStage.style.transform = "none";
+    exportStage.style.removeProperty("--wide-scale");
+
+    const pages = Array.from(exportStage.querySelectorAll(".page")) as HTMLElement[];
+    if (pages.length === 0) throw new Error("No page elements found in resume");
+    pages.forEach(applyNaturalExportPageWidth);
+
+    const sandboxStyle = document.createElement("style");
+    sandboxStyle.textContent = `${buildIsolatedResumeCss(RESUME_RAW_CSS)}
+${buildExportSandboxCss(sandboxId)}`;
+    host.appendChild(sandboxStyle);
+    host.appendChild(exportDoc);
+    document.body.appendChild(host);
+
+    return {
+      id: sandboxId,
+      host,
+      pages,
+      dispose: () => {
+        host.remove();
+      },
+    };
+  };
+
+  const runShot = async (el: HTMLElement, sandboxId: string) => {
     const html2canvas = (window as any).html2canvas;
     if (!html2canvas) throw new Error("html2canvas library not loaded");
 
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    await document.fonts.ready;
+
     const scale = 3;
+    const captureRect = el.getBoundingClientRect();
     const captureWidth = el.offsetWidth;
-    if (captureWidth === 0) {
-      throw new Error(`Source page offsetWidth is 0`);
+    const captureHeight = Math.max(el.offsetHeight, el.scrollHeight);
+    if (captureWidth !== RESUME_EXPORT_WIDTH || captureHeight === 0) {
+      throw new Error(`Resume page rendered at ${captureWidth}x${captureHeight} before export`);
     }
 
-    const targetPage = el.cloneNode(true) as HTMLElement;
+    const sandboxSelector = `[${RESUME_EXPORT_SANDBOX_ATTR}="${sandboxId}"]`;
+    const canvas = await html2canvas(el, {
+      scale,
+      backgroundColor: "#ffffff",
+      useCORS: true,
+      width: captureWidth,
+      height: captureHeight,
+      windowWidth: captureWidth,
+      windowHeight: captureHeight,
+      onclone: (clonedDoc: Document) => {
+        clonedDoc.documentElement.lang = lang === "he" ? "he" : "en";
+        clonedDoc.documentElement.dir = lang === "he" ? "rtl" : "ltr";
+        clonedDoc.documentElement.classList.add("exporting-shot");
+        clonedDoc.body.style.padding = "0";
+        clonedDoc.body.classList.remove("wide");
 
-    // Capture a clean clone in the same document. Calling html2canvas from the
-    // parent window on an element inside a temporary iframe can produce a 0x0
-    // canvas in Chrome, which serializes to the empty "data:," URL.
-    const exportHost = document.createElement("div");
-    exportHost.className = "resume-export-host";
-    exportHost.setAttribute("aria-hidden", "true");
-    exportHost.setAttribute("lang", lang === "he" ? "he" : "en");
-    exportHost.setAttribute("dir", lang === "he" ? "rtl" : "ltr");
-    exportHost.style.cssText = [
-      "position:fixed",
-      "left:-9999px",
-      "top:0",
-      `width:${captureWidth}px`,
-      "min-height:100px",
-      "z-index:-2147483647",
-      "pointer-events:none",
-      "background:#fff",
-      "overflow:visible",
-    ].join(";");
+        const clonedSandbox = clonedDoc.querySelector(sandboxSelector) as HTMLElement | null;
+        if (!clonedSandbox) return;
 
-    exportHost.appendChild(targetPage);
-    document.body.appendChild(exportHost);
+        clonedSandbox.classList.remove("wide");
+        clonedSandbox.style.width = `${RESUME_EXPORT_WIDTH}px`;
+        clonedSandbox.style.maxWidth = "none";
 
-    // Wait for layout so client rects are populated correctly on the clone
-    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+        const clonedDocEl = clonedSandbox.querySelector("#doc") as HTMLElement | null;
+        if (clonedDocEl) {
+          clonedDocEl.classList.remove("wide");
+          clonedDocEl.style.height = "";
+          clonedDocEl.style.width = `${RESUME_EXPORT_WIDTH}px`;
+          clonedDocEl.style.maxWidth = "none";
+        }
 
-    const targetPageRect = targetPage.getBoundingClientRect();
-    const captureHeight = Math.max(targetPage.offsetHeight, targetPage.scrollHeight);
-    if (captureHeight === 0 || targetPageRect.width === 0) {
-      document.body.removeChild(exportHost);
-      throw new Error(`Cloned page rendered at ${targetPageRect.width}x${captureHeight}`);
-    }
+        const clonedStage = clonedSandbox.querySelector("#stage") as HTMLElement | null;
+        if (clonedStage) {
+          clonedStage.style.width = `${RESUME_EXPORT_WIDTH}px`;
+          clonedStage.style.transform = "none";
+          clonedStage.style.removeProperty("--wide-scale");
+        }
 
-    const railMetrics = Array.from(targetPage.querySelectorAll(".experience, .edu-timeline"))
-      .map((timeline: any) => {
+        clonedSandbox.querySelectorAll(".page").forEach((page: any) => {
+          page.style.width = `${RESUME_EXPORT_WIDTH}px`;
+          page.style.maxWidth = "none";
+        });
+
+        const style = clonedDoc.createElement("style");
+        style.textContent =
+          ".experience::before, .edu-timeline::before { content: none !important; display: none !important; opacity: 0 !important; background: transparent !important; }";
+        clonedDoc.head.appendChild(style);
+        clonedSandbox.querySelectorAll(".exp-dot, .edu-dot").forEach((dot: any) => {
+          dot.style.visibility = "hidden";
+          dot.style.boxShadow = "none";
+        });
+      },
+    });
+
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      const viewScale = captureRect.width / el.offsetWidth || 1;
+
+      el.querySelectorAll(".experience, .edu-timeline").forEach((timeline: any) => {
         const firstDot = timeline.querySelector(".exp-dot, .edu-dot");
-        if (!firstDot) return null;
+        if (!firstDot) return;
         const timelineRect = timeline.getBoundingClientRect();
         const dotRect = firstDot.getBoundingClientRect();
         const css = getComputedStyle(timeline, "::before");
-        const railTop = parseFloat(css.top) || 0;
-        const railBottom = parseFloat(css.bottom) || 0;
-        const lineWidth = parseFloat(css.width) || 0;
-        return {
-          centerX: dotRect.left - targetPageRect.left + dotRect.width / 2,
-          y1: timelineRect.top - targetPageRect.top + railTop,
-          y2: timelineRect.bottom - targetPageRect.top - railBottom,
-          lineWidth,
-          strokeStyle: css.backgroundColor || "#b9c6dd",
-        };
-      })
-      .filter((metric): metric is { centerX: number; y1: number; y2: number; lineWidth: number; strokeStyle: string } => Boolean(metric));
-
-    const dotMetrics = Array.from(targetPage.querySelectorAll(".exp-dot, .edu-dot")).map((dot: any) => {
-      const rect = dot.getBoundingClientRect();
-      const css = getComputedStyle(dot);
-      return {
-        cx: rect.left - targetPageRect.left + rect.width / 2,
-        cy: rect.top - targetPageRect.top + rect.height / 2,
-        radius: rect.width / 2,
-        borderWidth: parseFloat(css.borderTopWidth) || 0,
-        shadowSpread: parseExportShadowSpread(css.boxShadow),
-        shadowStyle: parseExportShadowColor(css.boxShadow, "#b9c6dd"),
-        borderStyle: css.borderTopColor,
-        fillStyle: css.backgroundColor,
-      };
-    });
-
-    const exportStyle = document.createElement("style");
-    exportStyle.textContent = `
-      ${RESUME_RAW_CSS}
-
-      /* Flexbox gap workarounds for html2canvas */
-      [dir="rtl"] .contact .item svg { margin-left: 7px !important; }
-      [dir="ltr"] .contact .item svg { margin-right: 7px !important; }
-      [dir="rtl"] .personal .item svg { margin-left: 6px !important; }
-      [dir="ltr"] .personal .item svg { margin-right: 6px !important; }
-      [dir="rtl"] .photo-wrap { margin-right: 18px !important; }
-      [dir="ltr"] .photo-wrap { margin-left: 18px !important; }
-      [dir="rtl"] .sec-icon { margin-left: 11px !important; }
-      [dir="ltr"] .sec-icon { margin-right: 11px !important; }
-      [dir="rtl"] .know-label { margin-left: 10px !important; }
-      [dir="ltr"] .know-label { margin-right: 10px !important; }
-      [dir="rtl"] .skill { margin-left: 5px !important; margin-bottom: 5px !important; }
-      [dir="ltr"] .skill { margin-right: 5px !important; margin-bottom: 5px !important; }
-      [dir="rtl"] .lang-item::before { margin-left: 9px !important; }
-      [dir="ltr"] .lang-item::before { margin-right: 9px !important; }
-      [dir="rtl"] .footer svg { margin-left: 12px !important; }
-      [dir="ltr"] .footer svg { margin-right: 12px !important; }
-
-      .resume-export-host .experience::before,
-      .resume-export-host .edu-timeline::before {
-        content: none !important;
-        display: none !important;
-        opacity: 0 !important;
-        background: transparent !important;
-      }
-      .resume-export-host .exp-dot,
-      .resume-export-host .edu-dot {
-        visibility: hidden !important;
-        box-shadow: none !important;
-      }
-      .resume-export-host .page {
-        box-shadow: none !important;
-        color: var(--ink, #2a2f3a) !important;
-        font-family: 'Heebo', Arial, sans-serif !important;
-        line-height: normal !important;
-        width: ${captureWidth}px !important;
-        max-width: none !important;
-      }
-    `;
-    exportHost.insertBefore(exportStyle, targetPage);
-
-    await document.fonts.ready;
-
-    try {
-      if (targetPage.offsetWidth === 0 || targetPage.offsetHeight === 0) {
-        throw new Error(
-          `Export clone rendered at ${targetPage.offsetWidth}x${targetPage.offsetHeight} ` +
-            `(source ${captureWidth}x${captureHeight}, host ${exportHost.offsetWidth}x${exportHost.offsetHeight})`
+        const rail = exportTimelineRailMetrics(
+          timelineRect,
+          captureRect,
+          canvas.width,
+          dotRect.left - captureRect.left + dotRect.width / 2,
+          {
+            top: (parseFloat(css.top) || 0) * viewScale,
+            bottom: (parseFloat(css.bottom) || 0) * viewScale,
+            width: (parseFloat(css.width) || 0) * viewScale,
+            strokeStyle: css.backgroundColor || "#b9c6dd",
+          },
         );
-      }
 
-      const canvas = await html2canvas(targetPage, {
-        scale,
-        backgroundColor: "#ffffff",
-        useCORS: true,
-        width: captureWidth,
-        height: captureHeight,
-        windowWidth: captureWidth,
-        windowHeight: captureHeight,
+        if (rail.lineWidth <= 0 || rail.y2 <= rail.y1) return;
+        ctx.beginPath();
+        ctx.moveTo(rail.x, rail.y1);
+        ctx.lineTo(rail.x, rail.y2);
+        ctx.lineWidth = rail.lineWidth;
+        ctx.lineCap = "round";
+        ctx.strokeStyle = rail.strokeStyle;
+        ctx.stroke();
       });
 
-      // Post-process: redraw timeline rails and dots in HD on the canvas.
-      const ctx = canvas.getContext("2d");
-      if (ctx) {
-        ctx.save();
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-        const cssPx = scale;
-
-        railMetrics.forEach((rail) => {
-          if (rail.lineWidth > 0 && rail.y2 > rail.y1) {
-            ctx.beginPath();
-            ctx.moveTo(rail.centerX * cssPx, rail.y1 * cssPx);
-            ctx.lineTo(rail.centerX * cssPx, rail.y2 * cssPx);
-            ctx.lineWidth = rail.lineWidth * cssPx;
-            ctx.lineCap = "round";
-            ctx.strokeStyle = rail.strokeStyle;
-            ctx.stroke();
-          }
+      el.querySelectorAll(".exp-dot, .edu-dot").forEach((dot: any) => {
+        const rect = dot.getBoundingClientRect();
+        const css = getComputedStyle(dot);
+        const metrics = exportDotPaintMetrics(rect, captureRect, canvas.width, {
+          borderWidth: (parseFloat(css.borderTopWidth) || 0) * viewScale,
+          shadowSpread: parseExportShadowSpread(css.boxShadow) * viewScale,
+          fillStyle: css.backgroundColor,
+          borderStyle: css.borderTopColor,
+          shadowStyle: parseExportShadowColor(css.boxShadow, "#b9c6dd"),
         });
+        const rings: [number, string][] = [
+          [metrics.outerRadius, metrics.shadowStyle],
+          [metrics.borderRadius, metrics.borderStyle],
+          [metrics.fillRadius, metrics.fillStyle],
+        ];
 
-        dotMetrics.forEach((dot) => {
-          const cx = dot.cx * cssPx;
-          const cy = dot.cy * cssPx;
-          const borderBoxRadius = dot.radius * cssPx;
-
-          const rings: [number, string][] = [
-            [borderBoxRadius + dot.shadowSpread * cssPx, dot.shadowStyle],
-            [borderBoxRadius, dot.borderStyle],
-            [Math.max(0, borderBoxRadius - dot.borderWidth * cssPx), dot.fillStyle],
-          ];
-          rings.forEach(([radius, fillStyle]) => {
-            if (radius <= 0) return;
-            ctx.beginPath();
-            ctx.arc(cx, cy, radius, 0, 2 * Math.PI);
-            ctx.fillStyle = fillStyle;
-            ctx.fill();
-          });
+        rings.forEach(([radius, fillStyle]) => {
+          if (radius <= 0) return;
+          ctx.beginPath();
+          ctx.arc(metrics.cx, metrics.cy, radius, 0, 2 * Math.PI);
+          ctx.fillStyle = fillStyle;
+          ctx.fill();
         });
+      });
 
-        ctx.restore();
-      }
-
-      return canvas;
-    } finally {
-      document.body.removeChild(exportHost);
+      ctx.restore();
     }
+
+    return canvas;
   };
 
   const handleExportPNG = async () => {
     if (!scriptsLoaded || !containerRef.current) return;
     setIsExporting(true);
+    let sandbox: ExportSandbox | null = null;
     try {
-      const pages = Array.from(containerRef.current.querySelectorAll("#stage .page")) as HTMLElement[];
-      if (pages.length === 0) throw new Error("No page elements found in resume");
+      sandbox = createExportSandbox();
+      const { pages } = sandbox;
 
       for (let i = 0; i < pages.length; i++) {
-        const canvas = await runShot(pages[i]);
+        const canvas = await runShot(pages[i], sandbox.id);
         const link = document.createElement("a");
         link.download = (lang === "en" ? "Eitan_Baron_Resume_page_" : "איתן_ברון_קורות_חיים_עמוד_") + (i + 1) + ".png";
         link.href = canvas.toDataURL("image/png");
@@ -432,6 +486,7 @@ export const ResumeViewer: React.FC = () => {
       console.error("Export PNG error:", e);
       alert(lang === "en" ? "Exception exporting Image: " + getErrorMessage(e) : "שגיאה בייצוא תמונה: " + getErrorMessage(e));
     } finally {
+      sandbox?.dispose();
       setIsExporting(false);
     }
   };
@@ -439,6 +494,7 @@ export const ResumeViewer: React.FC = () => {
   const handleExportPDF = async () => {
     if (!scriptsLoaded || !containerRef.current) return;
     setIsExporting(true);
+    let sandbox: ExportSandbox | null = null;
     try {
       const windowJS = window as any;
       const jspdfObj = windowJS.jspdf;
@@ -448,11 +504,11 @@ export const ResumeViewer: React.FC = () => {
       const pw = pdf.internal.pageSize.getWidth();
       const ph = pdf.internal.pageSize.getHeight();
 
-      const pages = Array.from(containerRef.current.querySelectorAll("#stage .page")) as HTMLElement[];
-      if (pages.length === 0) throw new Error("No pages found in resume");
+      sandbox = createExportSandbox();
+      const { pages } = sandbox;
 
       for (let i = 0; i < pages.length; i++) {
-        const canvas = await runShot(pages[i]);
+        const canvas = await runShot(pages[i], sandbox.id);
         const img = canvas.toDataURL("image/jpeg", 0.95);
         if (i > 0) pdf.addPage();
         pdf.addImage(img, "JPEG", 0, 0, pw, ph);
@@ -462,6 +518,7 @@ export const ResumeViewer: React.FC = () => {
       console.error("Export PDF error:", e);
       alert(lang === "en" ? "Exception exporting PDF: " + getErrorMessage(e) : "שגיאה בייצוא PDF: " + getErrorMessage(e));
     } finally {
+      sandbox?.dispose();
       setIsExporting(false);
     }
   };
@@ -520,6 +577,17 @@ export const ResumeViewer: React.FC = () => {
 
       const photoEl = originalRoot.querySelector(".photo-wrap img") as HTMLImageElement;
       const photoSrc = photoEl ? photoEl.src : "";
+
+      const subtitleRuns = buildSubtitleSpec(gt(originalRoot.querySelector(".subtitle"))).map(
+        (run) =>
+          new D.TextRun({
+            ...run,
+            bold: true,
+            size: 22,
+            color: navy,
+            font: f,
+          }),
+      );
 
       const contactRuns: any[] = [];
       const contactItems = Array.from(originalRoot.querySelectorAll(".contact .item")) as any[];
@@ -616,16 +684,7 @@ export const ResumeViewer: React.FC = () => {
                       alignment: rtlTextAlign,
                       bidirectional: docRtl,
                       spacing: { after: 60 },
-                      children: [
-                        new D.TextRun({
-                          text: gt(originalRoot.querySelector(".subtitle")),
-                          bold: true,
-                          size: 22,
-                          color: navy,
-                          font: f,
-                          rightToLeft: false
-                        })
-                      ]
+                      children: subtitleRuns
                     }),
                     new D.Paragraph({
                       alignment: rtlTextAlign,
@@ -726,8 +785,8 @@ export const ResumeViewer: React.FC = () => {
                       bidirectional: docRtl,
                       spacing: { before: 60, after: 30 },
                       children: [
-                        new D.TextRun({ text: ti, bold: true, size: 21, color: "16243f", font: f, rightToLeft: true }),
-                        new D.TextRun({ text: "    " + yr, bold: true, size: 20, color: navy, font: f })
+                        new D.TextRun({ text: yr + "    ", bold: true, size: 20, color: navy, font: f }),
+                        new D.TextRun({ text: ti, bold: true, size: 21, color: "16243f", font: f, rightToLeft: true })
                       ]
                     })
                   );
@@ -845,7 +904,16 @@ export const ResumeViewer: React.FC = () => {
                 bidirectional: docRtl,
                 spacing: { after: 60 },
                 children: [
-                  new D.TextRun({ text: label + ":  " + (docRtl ? "\u200F" : ""), bold: true, size: 19, color: navy, font: f, rightToLeft: docRtl, rtl: docRtl }),
+                  ...buildKnowledgeLabelSpec(label, docRtl).map(
+                    (run) =>
+                      new D.TextRun({
+                        ...run,
+                        bold: true,
+                        size: 19,
+                        color: navy,
+                        font: f,
+                      }),
+                  ),
                   new D.TextRun({ text: skills, size: 19, color: "2b5aa0", font: f })
                 ]
               })
@@ -863,8 +931,8 @@ export const ResumeViewer: React.FC = () => {
                 bidirectional: docRtl,
                 spacing: { before: 100, after: 40 },
                 children: [
-                  new D.TextRun({ text: co, bold: true, size: 22, color: "16243f", font: f, rightToLeft: docRtl, rtl: docRtl }),
-                  new D.TextRun({ text: "    " + yr, bold: true, size: 20, color: navy, font: f })
+                  new D.TextRun({ text: yr + "    ", bold: true, size: 20, color: navy, font: f }),
+                  new D.TextRun({ text: co, bold: true, size: 22, color: "16243f", font: f, rightToLeft: docRtl, rtl: docRtl })
                 ]
               })
             );
@@ -919,8 +987,8 @@ export const ResumeViewer: React.FC = () => {
                   bidirectional: docRtl,
                   spacing: { before: 80, after: 30 },
                   children: [
-                    new D.TextRun({ text: ti, bold: true, size: 21, color: "16243f", font: f, rightToLeft: docRtl, rtl: docRtl }),
-                    new D.TextRun({ text: "    " + yr, bold: true, size: 20, color: navy, font: f })
+                    new D.TextRun({ text: yr + "    ", bold: true, size: 20, color: navy, font: f }),
+                    new D.TextRun({ text: ti, bold: true, size: 21, color: "16243f", font: f, rightToLeft: docRtl, rtl: docRtl })
                   ]
                 })
               );
@@ -1168,7 +1236,7 @@ export const ResumeViewer: React.FC = () => {
             style={{ width: "100%", maxWidth: viewMode === "wide" ? "none" : "794px" }}
             onClick={handleStageClick}
           >
-            {/* Direct injection of stage markup, strictly guarded to avoid any styling leaking out */}
+            {/* Same visible DOM structure as before; export isolation happens only in the hidden clone. */}
             <div id="doc" className={viewMode === "wide" ? "wide" : ""}>
               <ResumeMarkup html={htmlContent} />
             </div>

@@ -3,6 +3,7 @@ import path from "path";
 import dotenv from "dotenv";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
+import fs from "fs";
 
 dotenv.config();
 
@@ -10,7 +11,7 @@ const app = express();
 const PORT = 3000;
 
 // Enable JSON body parsing
-app.use(express.json());
+app.use(express.json({ limit: "50mb" }));
 
 // Initialize Gemini Client safely
 const getGeminiClient = (): GoogleGenAI => {
@@ -71,6 +72,18 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "healthy", time: new Date().toISOString() });
 });
 
+// Endpoint to save exported test images
+app.post("/api/save_test_image", (req, res) => {
+  try {
+    const { imgData, filename } = req.body;
+    const base64Data = imgData.replace(/^data:image\/png;base64,/, "");
+    fs.writeFileSync(path.join(process.cwd(), filename), base64Data, 'base64');
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Chat AI Endpoint supporting Gemini API
 app.post("/api/chat", async (req, res) => {
   try {
@@ -84,7 +97,6 @@ app.post("/api/chat", async (req, res) => {
     const ai = getGeminiClient();
 
     // Map client chat history to Gemini formats
-    // Each history item in request: { sender: 'user' | 'assistant', text: string }
     const formattedContents = [
       ...history.map((h: any) => ({
         role: h.sender === "user" ? "user" : "model",
