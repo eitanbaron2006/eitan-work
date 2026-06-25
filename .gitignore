@@ -6,3 +6,12 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Local resume/debug artifacts generated during visual export investigations.
+/dev_html.txt
+/react-live.png
+/test_resume.png
+/check_*.ts
+/test_export.ts
+/test_screenshot.ts
+/fix_viewer.py
