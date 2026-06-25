@@ -1,5 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import {
   RESUME_ISOLATION_SELECTOR,
   RESUME_EXPORT_WIDTH,
@@ -11,6 +13,15 @@ import {
   buildSubtitleSpec,
   scopeResumeCss,
 } from "./ResumeExportUtils";
+
+const indexCssPath = resolve(process.cwd(), "src/index.css");
+
+test("html2canvas text baseline fix restores browser-default inline image display", () => {
+  const css = readFileSync(indexCssPath, "utf8");
+
+  assert.match(css, /img\s*\{[\s\S]*display:\s*inline\s*;/);
+  assert.match(css, /img\s*\{[\s\S]*vertical-align:\s*baseline\s*!important\s*;/);
+});
 
 test("exports at the original 794px page width", () => {
   assert.equal(RESUME_EXPORT_WIDTH, 794);
@@ -75,6 +86,13 @@ test("isolated resume CSS resets app styles before applying the source CSS", () 
   assert.match(css, /all:\s*revert;/);
   assert.match(css, /line-height:\s*normal;/);
   assert.match(css, /\.cv-resume-isolated \.page/);
+});
+
+test("isolated resume CSS compensates html2canvas SVG baselines to match the live preview", () => {
+  const css = buildIsolatedResumeCss(".page { width: 794px; }");
+
+  assert.match(css, /\.cv-resume-isolated \.contact \.item svg\s*\{[^}]*translateY\(0\.5px\)/);
+  assert.match(css, /\.cv-resume-isolated \.sec-icon\s*\{[^}]*translateY\(1\.5px\)/);
 });
 
 test("keeps the original mixed subtitle in one LTR run", () => {

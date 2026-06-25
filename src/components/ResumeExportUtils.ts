@@ -173,19 +173,27 @@ export const buildIsolatedResumeCss = (
   ${scopeSelectorText} *::after {
     all: revert;
     box-sizing: border-box;
-    line-height: normal;
   }
 
   ${scopeSelectorText} {
     display: block;
-    direction: inherit;
-    unicode-bidi: isolate;
+    line-height: normal;
     font-family: 'Heebo', Arial, sans-serif;
     color: var(--ink, #2a2f3a);
     -webkit-font-smoothing: antialiased;
   }
 
   ${scopeResumeCss(rawCss, scopeSelectorText)}
+
+  /* html2canvas paints text a little lower than Chromium paints the live DOM.
+     Nudge only the export sandbox SVG anchors so the PNG/PDF aligns with the preview. */
+  ${scopeSelectorText} .contact .item svg {
+    transform: translateY(0.5px) !important;
+  }
+
+  ${scopeSelectorText} .sec-icon {
+    transform: translateY(1.5px) !important;
+  }
 `;
 
 export type WordRunSpec = {

@@ -7,3 +7,13 @@
   --font-mono: "Space Grotesk", ui-monospace, SFMono-Regular, monospace;
 }
 
+/* FIX FOR HTML2CANVAS BUG:
+   Tailwind globally sets img { display: block; vertical-align: middle; }.
+   html2canvas uses a hidden img element to calculate the baseline of text.
+   Because Tailwind overrides the browser-default inline image baseline behavior,
+   html2canvas calculates text baselines incorrectly and shifts all text down.
+   Restoring inline + baseline keeps PNG/PDF text aligned with the SVG icons. */
+img {
+  display: inline;
+  vertical-align: baseline !important;
+}

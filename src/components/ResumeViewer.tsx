@@ -386,9 +386,11 @@ ${buildExportSandboxCss(sandboxId)}`;
         });
 
         const style = clonedDoc.createElement("style");
-        style.textContent =
-          ".experience::before, .edu-timeline::before { content: none !important; display: none !important; opacity: 0 !important; background: transparent !important; }";
+        style.textContent = `
+          .experience::before, .edu-timeline::before { content: none !important; display: none !important; opacity: 0 !important; background: transparent !important; }
+        `;
         clonedDoc.head.appendChild(style);
+
         clonedSandbox.querySelectorAll(".exp-dot, .edu-dot").forEach((dot: any) => {
           dot.style.visibility = "hidden";
           dot.style.boxShadow = "none";
