@@ -18,6 +18,16 @@ const ResumeMarkup = React.memo(({ html }: { html: string }) => (
 ));
 ResumeMarkup.displayName = "ResumeMarkup";
 
+const RESUME_ENGLISH_LAYOUT_OVERRIDES = `
+  [dir="ltr"] .know-label {
+    flex: 0 0 120px;
+  }
+
+  [dir="ltr"] .skill {
+    padding: 1px 3px;
+  }
+`;
+
 export const ResumeViewer: React.FC = () => {
   const [htmlContent, setHtmlContent] = useState<string>("");
   const [cssContent, setCssContent] = useState<string>("");
@@ -130,7 +140,8 @@ export const ResumeViewer: React.FC = () => {
     let cleanStyles = RESUME_RAW_CSS
       .replace(/body\s*{/g, ".cv-body-wrapper {")
       .replace(/html,\s*body\s*{/g, ".cv-html-body-wrapper {")
-      .replace(/html\.exporting-shot/g, ".exporting-shot");
+      .replace(/html\.exporting-shot/g, ".exporting-shot")
+      .replace(/body\.wide/g, ".cv-view.wide");
 
     cleanStyles = cleanStyles.replace(/#5b6578/g, "#F4F1EA");
 
@@ -148,11 +159,70 @@ export const ResumeViewer: React.FC = () => {
       .cv-body-wrapper {
         background: #F4F1EA !important;
       }
-    `;
+    ${RESUME_ENGLISH_LAYOUT_OVERRIDES}`;
 
     setCssContent(cleanStyles);
     setHtmlContent(RESUME_RAW_HTML);
   }, []);
+
+  const placeAmdocsForLanguage = (root: HTMLElement, selectedLang: "he" | "en") => {
+    const company = root.querySelector('[data-en="Amdocs | Java / J2EE Developer"]') as HTMLElement | null;
+    const item = company?.closest(".exp-item") as HTMLElement | null;
+    const page2 = root.querySelector("#page2") as HTMLElement | null;
+    const sourceList = item?.querySelector(".exp-list") as HTMLElement | null;
+    if (!item || !page2 || !sourceList) return;
+
+    let home = root.querySelector("#amdocs-hebrew-home") as HTMLElement | null;
+    if (!home) {
+      home = document.createElement("span");
+      home.id = "amdocs-hebrew-home";
+      home.hidden = true;
+      item.before(home);
+    }
+
+    const existingSection = root.querySelector("#amdocs-english-section") as HTMLElement | null;
+    const existingDivider = root.querySelector("#amdocs-english-divider") as HTMLElement | null;
+    const continuationList = root.querySelector("#amdocs-english-continuation-list") as HTMLElement | null;
+
+    if (selectedLang === "he") {
+      continuationList?.querySelectorAll("li").forEach((li) => sourceList.appendChild(li));
+      item.style.marginTop = "";
+      home.after(item);
+      existingSection?.remove();
+      existingDivider?.remove();
+      return;
+    }
+
+    home.after(item);
+    item.style.marginTop = "";
+
+    let section = existingSection;
+    const carriedContinuationItems = continuationList ? Array.from(continuationList.querySelectorAll("li")) : [];
+    if (!section || section.dataset.amdocsLayout !== "continuation-v2") {
+      existingSection?.remove();
+      existingDivider?.remove();
+
+      section = document.createElement("div");
+      section.id = "amdocs-english-section";
+      section.className = "section";
+      section.dataset.amdocsLayout = "continuation-v2";
+      section.style.padding = "40px 34px 0 34px";
+      section.innerHTML = '<div style="font-size:13px;font-weight:800;color:#022159;margin:0 0 1px 0;line-height:1.05;">Amdocs | Java / J2EE Developer <span style="font-size:12.5px;font-weight:600;color:#6a7286;">— continued from page 1</span></div><ul class="exp-list" id="amdocs-english-continuation-list"></ul>';
+
+      const first = page2.firstElementChild;
+      page2.insertBefore(section, first);
+
+      const newContinuationList = root.querySelector("#amdocs-english-continuation-list") as HTMLElement | null;
+      carriedContinuationItems.forEach((li) => newContinuationList?.appendChild(li));
+    }
+
+    const targetList = root.querySelector("#amdocs-english-continuation-list") as HTMLElement | null;
+    if (!targetList) return;
+
+    const sourceItems = Array.from(sourceList.querySelectorAll(":scope > li"));
+    const existingContinuationItems = Array.from(targetList.querySelectorAll(":scope > li"));
+    targetList.replaceChildren(...sourceItems, ...existingContinuationItems);
+  };
 
   // Handle translation toggles (identical to the script logic of resume.html but reactive)
   useEffect(() => {
@@ -174,6 +244,8 @@ export const ResumeViewer: React.FC = () => {
         el.innerHTML = el.dataset.originalHtml;
       }
     });
+
+    placeAmdocsForLanguage(root, lang);
 
     if (viewMode === "wide") {
       updateWideScale();
@@ -202,14 +274,25 @@ export const ResumeViewer: React.FC = () => {
 
   useEffect(() => {
     if (viewMode === "wide") {
-      updateWideScale();
+      containerRef.current?.scrollIntoView({ block: "start", inline: "nearest", behavior: "auto" });
+      const stickyHeader = document.querySelector("header") as HTMLElement | null;
+      const headerOffset = stickyHeader ? stickyHeader.getBoundingClientRect().height + 12 : 0;
+      if (headerOffset > 0) {
+        window.scrollBy({ top: -headerOffset, left: 0, behavior: "auto" });
+      }
+      const frame = window.requestAnimationFrame(updateWideScale);
       window.addEventListener("resize", updateWideScale);
-    } else {
-      const docEl = containerRef.current?.querySelector("#doc") as HTMLDivElement;
-      const stage = containerRef.current?.querySelector("#stage") as HTMLDivElement;
-      if (docEl) docEl.style.height = "";
-      if (stage) stage.style.removeProperty("--wide-scale");
+      return () => {
+        window.cancelAnimationFrame(frame);
+        window.removeEventListener("resize", updateWideScale);
+      };
     }
+
+    const docEl = containerRef.current?.querySelector("#doc") as HTMLDivElement;
+    const stage = containerRef.current?.querySelector("#stage") as HTMLDivElement;
+    if (docEl) docEl.style.height = "";
+    if (stage) stage.style.removeProperty("--wide-scale");
+
     return () => {
       window.removeEventListener("resize", updateWideScale);
     };
@@ -312,6 +395,7 @@ export const ResumeViewer: React.FC = () => {
 
     const sandboxStyle = document.createElement("style");
     sandboxStyle.textContent = `${buildIsolatedResumeCss(RESUME_RAW_CSS)}
+${RESUME_ENGLISH_LAYOUT_OVERRIDES}
 ${buildExportSandboxCss(sandboxId)}`;
     host.appendChild(sandboxStyle);
     host.appendChild(exportDoc);
