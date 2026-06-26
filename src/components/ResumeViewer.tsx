@@ -247,9 +247,18 @@ export const ResumeViewer: React.FC = () => {
 
     placeAmdocsForLanguage(root, lang);
 
-    if (viewMode === "wide") {
-      updateWideScale();
-    }
+    // When switching language, the freshly translated DOM has not been laid out yet.
+    // Measuring synchronously would scale against the OLD page height/width. Defer to
+    // the next frame so the fit is computed against the inner framed width — exactly
+    // like switching view modes does.
+    const frame = window.requestAnimationFrame(() => {
+      if (viewMode === "wide") {
+        updateWideScale();
+      } else {
+        updateNormalScale();
+      }
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, [lang, htmlContent]);
 
   // Handle view scale and styling updates responsive to window resizing or switching normal/wide tab
@@ -259,27 +268,80 @@ export const ResumeViewer: React.FC = () => {
     const stage = containerRef.current.querySelector("#stage") as HTMLDivElement;
     if (!docEl || !stage) return;
 
-    docEl.style.height = "";
-    const top = docEl.getBoundingClientRect().top;
-    const availH = window.innerHeight - top - 16;
-    const availW = containerRef.current.clientWidth - 32;
-    docEl.style.height = `${availH}px`;
+    // Clear any inline transform left over from normal-view scaling so the wide-view
+    // CSS transform (scale(var(--wide-scale))) takes effect.
+    stage.style.transform = "";
+    stage.style.transformOrigin = "";
+    stage.style.width = "";
+    stage.style.margin = "";
 
-    const naturalW = stage.scrollWidth || (794 * 2 + 30);
+    docEl.style.height = "";
+    // containerRef is the cv-view itself (already inside the wrapper padding), so its
+    // clientWidth IS the available width — only a tiny safety margin is needed to
+    // avoid sub-pixel horizontal overflow.
+    const availW = containerRef.current.clientWidth - 4;
+
+    // Measure the spread width deterministically from the page boxes + gaps rather
+    // than stage.scrollWidth, which can report a stale/padded value mid-transition.
+    const pages = Array.from(stage.querySelectorAll<HTMLElement>(".page"));
+    const gap = parseFloat(getComputedStyle(stage).gap || "0") || 0;
+    const pagesWidth = pages.reduce((sum, p) => sum + p.offsetWidth, 0);
+    const naturalW =
+      pages.length > 0
+        ? pagesWidth + gap * Math.max(0, pages.length - 1)
+        : stage.scrollWidth || 794 * 2 + 30;
     const naturalH = stage.scrollHeight || 1123;
 
-    const s = Math.min(availW / naturalW, availH / naturalH);
+    // Wide view must ALWAYS fill the available inner width (the two-page spread side
+    // by side), with vertical scrolling for the overflow. Scaling by width only —
+    // never by height — keeps the result deterministic instead of flipping between a
+    // "fit-whole-spread-on-screen" state and a "fill-width" state.
+    const s = availW / naturalW;
     stage.style.setProperty("--wide-scale", s > 0 ? String(s) : "1");
+
+    // Reserve the scaled spread height so the page flow scrolls vertically and the
+    // spread is not vertically centered/clipped inside a viewport-tall box.
+    docEl.style.height = `${naturalH * s}px`;
+  };
+
+  // Normal view: enlarge the single A4 page to fill more of the inner framed width.
+  // The page is locked at 794px so its internal layout (heights, bullets, page split)
+  // never breaks; we just scale the whole thing up proportionally to the available
+  // width and compensate the flow height so vertical scrolling stays correct.
+  const NORMAL_VIEW_MAX_SCALE = 1.7;
+  const updateNormalScale = () => {
+    if (viewMode !== "normal" || !containerRef.current) return;
+    const docEl = containerRef.current.querySelector("#doc") as HTMLDivElement;
+    const stage = containerRef.current.querySelector("#stage") as HTMLDivElement;
+    if (!docEl || !stage) return;
+
+    // Reset before measuring so we always scale against natural dimensions.
+    stage.style.transform = "";
+    stage.style.transformOrigin = "";
+    stage.style.width = "";
+    stage.style.margin = "";
+    docEl.style.height = "";
+
+    const naturalW = 794;
+    const availW = containerRef.current.clientWidth - 8;
+    const s = Math.min(availW / naturalW, NORMAL_VIEW_MAX_SCALE);
+    if (s <= 1) return; // narrow screens: keep the page at its natural size
+
+    // Shrink the stage to its content width (the 794px page) so scaling enlarges only
+    // the page itself and does not push the full-width flex column into overflow.
+    stage.style.width = `${naturalW}px`;
+    stage.style.margin = "0 auto";
+
+    const naturalH = stage.scrollHeight;
+    stage.style.transformOrigin = "top center";
+    stage.style.transform = `scale(${s})`;
+    docEl.style.height = `${naturalH * s}px`;
   };
 
   useEffect(() => {
     if (viewMode === "wide") {
-      containerRef.current?.scrollIntoView({ block: "start", inline: "nearest", behavior: "auto" });
-      const stickyHeader = document.querySelector("header") as HTMLElement | null;
-      const headerOffset = stickyHeader ? stickyHeader.getBoundingClientRect().height + 12 : 0;
-      if (headerOffset > 0) {
-        window.scrollBy({ top: -headerOffset, left: 0, behavior: "auto" });
-      }
+      // Do NOT auto-scroll the page when entering wide view — the user scrolls when
+      // they want to. Just compute the wide fit in place.
       const frame = window.requestAnimationFrame(updateWideScale);
       window.addEventListener("resize", updateWideScale);
       return () => {
@@ -293,8 +355,11 @@ export const ResumeViewer: React.FC = () => {
     if (docEl) docEl.style.height = "";
     if (stage) stage.style.removeProperty("--wide-scale");
 
+    const frame = window.requestAnimationFrame(updateNormalScale);
+    window.addEventListener("resize", updateNormalScale);
     return () => {
-      window.removeEventListener("resize", updateWideScale);
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("resize", updateNormalScale);
     };
   }, [viewMode, htmlContent]);
 
@@ -1216,101 +1281,99 @@ ${buildExportSandboxCss(sandboxId)}`;
       {/* Scope embedded CSS inside React head dynamically */}
       {cssContent && <style dangerouslySetInnerHTML={{ __html: cssContent }} />}
 
-      {/* Modern High-End Swiss Controller Panel */}
-      <div className="bg-[#FAF9F6] p-6 border border-black/10 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-6">
-        <div className="space-y-1 text-left">
-          <h3 className="text-xl font-sans font-black text-[#1A1A1A] flex items-center justify-start gap-1.5 leading-none">
+      {/* Header — styled like the portfolio page title (no frame / no background) */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-black/10 pb-6">
+        <div>
+          <h3 className="text-2xl font-sans font-black text-[#1A1A1A]">
             מסוף קורות חיים של איתן
           </h3>
-          <p className="text-xs sm:text-sm text-[#1A1A1A]/70 font-sans font-semibold">
+          <p className="text-sm text-[#1A1A1A]/85 font-sans font-bold mt-1">
             צפייה אינטראקטיבית ודיווח קורות חיים רשמי, מעובד ישירות מתוך הקוד המקורי ללא שינוי.
           </p>
         </div>
 
-        {/* Polished switches and trigger elements */}
-        <div className="flex flex-wrap items-center justify-end gap-3">
-          {/* Language selection block */}
-          <div className="flex border border-black/10">
-            <button
-              onClick={() => setLang("he")}
-              className={`px-4 py-2 text-xs font-sans font-black tracking-wider transition-all duration-150 cursor-pointer ${
-                lang === "he"
-                  ? "bg-[#1A1A1A] text-[#FAF9F6]"
-                  : "bg-transparent text-[#1A1A1A]/60 hover:text-[#1A1A1A]"
-              }`}
-            >
-              עברית
-            </button>
-            <button
-              onClick={() => setLang("en")}
-              className={`px-4 py-2 text-xs font-sans font-black tracking-wider transition-all duration-150 cursor-pointer ${
-                lang === "en"
-                  ? "bg-[#1A1A1A] text-[#FAF9F6]"
-                  : "bg-transparent text-[#1A1A1A]/60 hover:text-[#1A1A1A]"
-              }`}
-            >
-              ENGLISH
-            </button>
-          </div>
-
-          {/* View mode block */}
-          <div className="flex border border-black/10">
-            <button
-              onClick={() => setViewMode("normal")}
-              className={`p-2 flex items-center gap-1.5 text-xs font-sans font-black tracking-wider transition-all duration-150 cursor-pointer ${
-                viewMode === "normal"
-                  ? "bg-[#1A1A1A] text-[#FAF9F6]"
-                  : "bg-transparent text-[#1A1A1A]/60 hover:text-[#1A1A1A]"
-              }`}
-              title="תצוגה רגילה"
-            >
-              <Smartphone className="w-4 h-4" />
-              <span className="hidden sm:inline">רגילה</span>
-            </button>
-            <button
-              onClick={() => setViewMode("wide")}
-              className={`p-2 flex items-center gap-1.5 text-xs font-sans font-black tracking-wider transition-all duration-150 cursor-pointer ${
-                viewMode === "wide"
-                  ? "bg-[#1A1A1A] text-[#FAF9F6]"
-                  : "bg-transparent text-[#1A1A1A]/60 hover:text-[#1A1A1A]"
-              }`}
-              title="תצוגה רחבה"
-            >
-              <Monitor className="w-4 h-4" />
-              <span className="hidden sm:inline">רחבה</span>
-            </button>
-          </div>
+        {/* Compact export actions */}
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={handleExportPNG}
+            disabled={isExporting || !scriptsLoaded}
+            className="flex items-center gap-1.5 px-3 py-1.5 border border-[#1A1A1A] text-[#1A1A1A] font-sans font-bold text-xs transition-all duration-150 cursor-pointer hover:bg-[#e07631] hover:border-[#e07631] hover:text-white disabled:opacity-40"
+          >
+            {isExporting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Image className="w-3.5 h-3.5" />}
+            ייצוא לתמונה (PNG)
+          </button>
+          <button
+            onClick={handleExportPDF}
+            disabled={isExporting || !scriptsLoaded}
+            className="flex items-center gap-1.5 px-3 py-1.5 border border-[#1A1A1A] text-[#1A1A1A] font-sans font-bold text-xs transition-all duration-150 cursor-pointer hover:bg-[#e07631] hover:border-[#e07631] hover:text-white disabled:opacity-40"
+          >
+            {isExporting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />}
+            ייצוא ל-PDF
+          </button>
+          <button
+            onClick={handleExportWord}
+            disabled={isExporting || !scriptsLoaded}
+            className="flex items-center gap-1.5 px-3 py-1.5 border border-[#1A1A1A] text-[#1A1A1A] font-sans font-bold text-xs transition-all duration-150 cursor-pointer hover:bg-[#e07631] hover:border-[#e07631] hover:text-white disabled:opacity-40"
+          >
+            {isExporting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+            ייצוא ל-WORD
+          </button>
         </div>
       </div>
 
-      {/* Swiss Export Actions Toolbar - Perfectly styled to existing layout */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <button
-          onClick={handleExportPNG}
-          disabled={isExporting || !scriptsLoaded}
-          className="flex items-center justify-center gap-2 px-5 py-4 border border-[#1A1A1A] text-[#1A1A1A] font-sans font-black text-xs tracking-wider uppercase transition-all duration-150 cursor-pointer hover:bg-[#e07631] hover:border-[#e07631] hover:text-white disabled:opacity-40"
-        >
-          {isExporting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Image className="w-4 h-4" />}
-          להורדה כתמונה (PNG)
-        </button>
+      {/* Centered language + view controls (placed above the resume) */}
+      <div className="flex flex-wrap items-center justify-center gap-3">
+        {/* Language selection block */}
+        <div className="flex border border-black/10">
+          <button
+            onClick={() => setLang("he")}
+            className={`px-4 py-2 text-xs font-sans font-black tracking-wider transition-all duration-150 cursor-pointer ${
+              lang === "he"
+                ? "bg-[#1A1A1A] text-[#FAF9F6]"
+                : "bg-transparent text-[#1A1A1A]/60 hover:text-[#1A1A1A]"
+            }`}
+          >
+            עברית
+          </button>
+          <button
+            onClick={() => setLang("en")}
+            className={`px-4 py-2 text-xs font-sans font-black tracking-wider transition-all duration-150 cursor-pointer ${
+              lang === "en"
+                ? "bg-[#1A1A1A] text-[#FAF9F6]"
+                : "bg-transparent text-[#1A1A1A]/60 hover:text-[#1A1A1A]"
+            }`}
+          >
+            ENGLISH
+          </button>
+        </div>
 
-        <button
-          onClick={handleExportPDF}
-          disabled={isExporting || !scriptsLoaded}
-          className="flex items-center justify-center gap-2 px-5 py-4 border border-[#1A1A1A] text-[#1A1A1A] font-sans font-black text-xs tracking-wider uppercase transition-all duration-150 cursor-pointer hover:bg-[#e07631] hover:border-[#e07631] hover:text-white disabled:opacity-40"
-        >
-          {isExporting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
-          הורדה כקובץ להדפסה (PDF)
-        </button>
-
-        <button
-          onClick={handleExportWord}
-          disabled={isExporting || !scriptsLoaded}
-          className="flex items-center justify-center gap-2 px-5 py-4 border border-[#1A1A1A] text-[#1A1A1A] font-sans font-black text-xs tracking-wider uppercase transition-all duration-150 cursor-pointer hover:bg-[#e07631] hover:border-[#e07631] hover:text-white disabled:opacity-40"
-        >
-          {isExporting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-          הורדה לעריכה כקובץ Word
-        </button>
+        {/* View mode block */}
+        <div className="flex border border-black/10">
+          <button
+            onClick={() => setViewMode("normal")}
+            className={`p-2 flex items-center gap-1.5 text-xs font-sans font-black tracking-wider transition-all duration-150 cursor-pointer ${
+              viewMode === "normal"
+                ? "bg-[#1A1A1A] text-[#FAF9F6]"
+                : "bg-transparent text-[#1A1A1A]/60 hover:text-[#1A1A1A]"
+            }`}
+            title="תצוגה רגילה"
+          >
+            <Smartphone className="w-4 h-4" />
+            <span className="hidden sm:inline">רגילה</span>
+          </button>
+          <button
+            onClick={() => setViewMode("wide")}
+            className={`p-2 flex items-center gap-1.5 text-xs font-sans font-black tracking-wider transition-all duration-150 cursor-pointer ${
+              viewMode === "wide"
+                ? "bg-[#1A1A1A] text-[#FAF9F6]"
+                : "bg-transparent text-[#1A1A1A]/60 hover:text-[#1A1A1A]"
+            }`}
+            title="תצוגה רחבה"
+          >
+            <Monitor className="w-4 h-4" />
+            <span className="hidden sm:inline">רחבה</span>
+          </button>
+        </div>
       </div>
 
       {/* CV Interactive Scrolling Stage Center Container */}
@@ -1319,7 +1382,7 @@ ${buildExportSandboxCss(sandboxId)}`;
           <div
             ref={containerRef}
             className={`cv-view select-text text-right ${viewMode === "wide" ? "wide" : ""}`}
-            style={{ width: "100%", maxWidth: viewMode === "wide" ? "none" : "794px" }}
+            style={{ width: "100%", maxWidth: "none" }}
             onClick={handleStageClick}
           >
             {/* Same visible DOM structure as before; export isolation happens only in the hidden clone. */}
