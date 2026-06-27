@@ -1,4 +1,5 @@
 import { Project } from "./types";
+import { PROJECT_COLOR_SCHEME_BY_ID } from "./projectColorSchemes";
 
 export const PORTFOLIO_PROJECTS: Project[] = [
   {
@@ -13,13 +14,7 @@ export const PORTFOLIO_PROJECTS: Project[] = [
     role: "מפתח תוכנה בכיר (יעל תוכנה)",
     period: "2012 – 2023",
     iconName: "ShieldCheck",
-    colorScheme: {
-      primary: "bg-emerald-500",
-      bg: "bg-emerald-50/50",
-      text: "text-emerald-700",
-      border: "border-emerald-200",
-      gradient: "from-emerald-500 to-teal-600"
-    },
+    colorScheme: PROJECT_COLOR_SCHEME_BY_ID["discount-credit-loan"],
     features: [
       "אינטגרציה מאובטחת מול מערכות ליבה פיננסיות ושינויי רגולציה בנקאית",
       "כתיבת שאילתות מורכבות ופרוצדורות מול מסד הנתונים Oracle לייעול ביצועים במאות אחוזים",
@@ -39,13 +34,7 @@ export const PORTFOLIO_PROJECTS: Project[] = [
     role: "מפתח תוכנה ואינטגרציה",
     period: "2016 – 2018",
     iconName: "Cpu",
-    colorScheme: {
-      primary: "bg-blue-600",
-      bg: "bg-blue-50/50",
-      text: "text-blue-700",
-      border: "border-blue-200",
-      gradient: "from-blue-600 to-indigo-700"
-    },
+    colorScheme: PROJECT_COLOR_SCHEME_BY_ID["discount-activex-bridge"],
     features: [
       "גישור פערים טכנולוגיים בין סביבות דפדפן Web לחומרה מקומית (סורקים קוראי צ'קים)",
       "עבודה הדוקה עם דפדפני Enterprise ונהלי אבטחה של Windows",
@@ -64,13 +53,7 @@ export const PORTFOLIO_PROJECTS: Project[] = [
     role: "מפתח Full-Stack",
     period: "2020 – 2022",
     iconName: "LayoutDashboard",
-    colorScheme: {
-      primary: "bg-cyan-500",
-      bg: "bg-cyan-50/50",
-      text: "text-cyan-700",
-      border: "border-cyan-200",
-      gradient: "from-cyan-500 to-blue-600"
-    },
+    colorScheme: PROJECT_COLOR_SCHEME_BY_ID["discount-vue-dashboard"],
     features: [
       "פיתוח ארכיטקטורה מודרנית מבוססת REST API מהיר ויציב",
       "ייעול זמני פיתוח וקצב תגובה של הממשק ב-Vue.js תוך הטמעת דפוסי כתיבה מתקדמים",
@@ -89,13 +72,7 @@ export const PORTFOLIO_PROJECTS: Project[] = [
     role: "מפתח יוצר ועצמאי",
     period: "2024 – 2026",
     iconName: "Globe",
-    colorScheme: {
-      primary: "bg-purple-500",
-      bg: "bg-purple-50/50",
-      text: "text-purple-700",
-      border: "border-purple-200",
-      gradient: "from-purple-500 to-indigo-600"
-    },
+    colorScheme: PROJECT_COLOR_SCHEME_BY_ID["eitan-work-platform"],
     features: [
       "שילוב קוד תלת-ממדי אינטראקטיבי ומתקדם עם Three.js להמחשת ממשקי משתמש מרהיבים",
       "פיתוח Full-Stack מבוסס ענן וארכיטקטורה מבוזרת עם זמני טעינה מהירים במיוחד",
@@ -114,13 +91,7 @@ export const PORTFOLIO_PROJECTS: Project[] = [
     role: "מפתח פתרונות בינה מלאכותית",
     period: "2025 – 2026",
     iconName: "Sparkles",
-    colorScheme: {
-      primary: "bg-amber-500",
-      bg: "bg-amber-50/50",
-      text: "text-amber-700",
-      border: "border-amber-200",
-      gradient: "from-amber-500 to-orange-600"
-    },
+    colorScheme: PROJECT_COLOR_SCHEME_BY_ID["ai-financial-assistant"],
     features: [
       "שימוש בשיטות RAG (Retrieval-Augmented Generation) לחיפוש ומענה מהיר מבין מאות מסמכים",
       "הנגשת מידע פיננסי וטכני מורכב לשפת אנושית פשוטה, אינטואיטיבית ונוחה לכל מנהל",

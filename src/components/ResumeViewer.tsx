@@ -1292,12 +1292,12 @@ ${buildExportSandboxCss(sandboxId)}`;
           </p>
         </div>
 
-        {/* Compact export actions */}
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Compact export actions — grouped segmented set */}
+        <div className="flex flex-wrap items-center gap-1 bg-[#E7E1D3] p-1 border border-black/10">
           <button
             onClick={handleExportPNG}
             disabled={isExporting || !scriptsLoaded}
-            className="flex items-center gap-1.5 px-3 py-1.5 border border-[#1A1A1A] text-[#1A1A1A] font-sans font-bold text-xs transition-all duration-150 cursor-pointer hover:bg-[#e07631] hover:border-[#e07631] hover:text-white disabled:opacity-40"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-[#1A1A1A] font-sans font-bold text-xs transition-colors cursor-pointer hover:bg-[#e07631] hover:text-white disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[#1A1A1A]"
           >
             {isExporting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Image className="w-3.5 h-3.5" />}
             ייצוא לתמונה (PNG)
@@ -1305,7 +1305,7 @@ ${buildExportSandboxCss(sandboxId)}`;
           <button
             onClick={handleExportPDF}
             disabled={isExporting || !scriptsLoaded}
-            className="flex items-center gap-1.5 px-3 py-1.5 border border-[#1A1A1A] text-[#1A1A1A] font-sans font-bold text-xs transition-all duration-150 cursor-pointer hover:bg-[#e07631] hover:border-[#e07631] hover:text-white disabled:opacity-40"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-[#1A1A1A] font-sans font-bold text-xs transition-colors cursor-pointer hover:bg-[#e07631] hover:text-white disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[#1A1A1A]"
           >
             {isExporting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />}
             ייצוא ל-PDF
@@ -1313,7 +1313,7 @@ ${buildExportSandboxCss(sandboxId)}`;
           <button
             onClick={handleExportWord}
             disabled={isExporting || !scriptsLoaded}
-            className="flex items-center gap-1.5 px-3 py-1.5 border border-[#1A1A1A] text-[#1A1A1A] font-sans font-bold text-xs transition-all duration-150 cursor-pointer hover:bg-[#e07631] hover:border-[#e07631] hover:text-white disabled:opacity-40"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-[#1A1A1A] font-sans font-bold text-xs transition-colors cursor-pointer hover:bg-[#e07631] hover:text-white disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[#1A1A1A]"
           >
             {isExporting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
             ייצוא ל-WORD
@@ -1391,8 +1391,8 @@ ${buildExportSandboxCss(sandboxId)}`;
             </div>
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-24 text-white/70 space-y-3">
-            <RefreshCw className="w-8 h-8 animate-spin" />
+          <div className="flex flex-col items-center justify-center py-24 text-[#1A1A1A]/60 space-y-3">
+            <RefreshCw className="w-8 h-8 animate-spin text-[#e07631]" />
             <span className="text-sm font-sans font-bold">טוען קורות חיים...</span>
           </div>
         )}
